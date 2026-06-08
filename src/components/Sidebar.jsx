@@ -1,7 +1,9 @@
 import { NavLink } from "react-router-dom";
 
+import { normalizeRole } from "../api/client";
+
 function Sidebar() {
-    const role = localStorage.getItem("peztz_role");
+    const role = normalizeRole(localStorage.getItem("peztz_role"));
 
     const ownerMenus = [
         { path: "/owner", label: "홈" },
@@ -10,19 +12,9 @@ function Sidebar() {
     ];
 
     const facilityMenus = [
-        { path: "/facility", label: "대시보드" },
+        { path: "/facility", label: "시설 홈" },
         { path: "/facility/cages", label: "케이지 관리" },
-        { path: "/facility/sessions", label: "입실 세션" },
-        { path: "/facility/devices", label: "장비 상태" },
-        { path: "/facility/logs", label: "로그/이벤트" },
-    ];
-
-    const adminMenus = [
-        { path: "/admin", label: "대시보드" },
-        { path: "/admin/users", label: "회원 관리" },
-        { path: "/admin/facilities", label: "시설 관리" },
-        { path: "/admin/cages", label: "케이지 관리" },
-        { path: "/admin/devices", label: "기기 관리" },
+        { path: "/facility/admissions", label: "입실 관리" },
     ];
 
     let menus = ownerMenus;
@@ -32,7 +24,7 @@ function Sidebar() {
     }
 
     if (role === "ADMIN") {
-        menus = adminMenus;
+        menus = facilityMenus;
     }
 
     return (

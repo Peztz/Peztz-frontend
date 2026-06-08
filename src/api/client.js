@@ -12,7 +12,10 @@ export const springApi = axios.create({
 });
 
 export function normalizeRole(role) {
-  if (role === "FACILITY_MANAGER") return "FACILITY";
+  if (["HOSPITAL", "FACILITY", "FACILITY_MANAGER"].includes(role)) {
+    return "FACILITY";
+  }
+
   return role || "OWNER";
 }
 

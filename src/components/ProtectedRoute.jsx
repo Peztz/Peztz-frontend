@@ -13,12 +13,12 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (allowedRoles?.length && !allowedRoles.includes(userRole)) {
-    if (userRole === "ADMIN") {
-      return <Navigate to="/admin" replace />;
-    }
-
     if (userRole === "FACILITY") {
       return <Navigate to="/facility" replace />;
+    }
+
+    if (userRole === "ADMIN") {
+      return <Navigate to="/admin" replace />;
     }
 
     return <Navigate to="/owner" replace />;

@@ -91,6 +91,7 @@ function SignupPage() {
           <label>역할</label>
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="OWNER">견주</option>
+            <option value="HOSPITAL">병원/시설</option>
             <option value="FACILITY_MANAGER">시설 관리자</option>
             <option value="ADMIN">시스템 관리자</option>
           </select>

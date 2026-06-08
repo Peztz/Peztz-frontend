@@ -387,6 +387,21 @@ th {
   font-weight: 700;
 }
 
+.form-success {
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+
+.inline-help {
+  margin-top: 8px;
+  color: #667085;
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
   .sidebar {
     display: none;
@@ -999,6 +1014,146 @@ th {
   color: #dc2626;
 }
 
+.section-subblock {
+  margin-top: 24px;
+}
+
+.section-subblock h3 {
+  margin: 0 0 12px;
+  color: #101828;
+}
+
+.select-card-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.select-card {
+  border: 1px solid #e6eaf2;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  text-align: left;
+  transition: 0.15s ease;
+}
+
+.select-card:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.select-card.active {
+  border-color: #2f6fed;
+  background: #eff6ff;
+}
+
+.select-card strong,
+.select-card span,
+.select-card small {
+  display: block;
+}
+
+.select-card strong {
+  color: #101828;
+  margin-bottom: 6px;
+}
+
+.select-card span {
+  color: #475467;
+  margin-bottom: 6px;
+}
+
+.select-card small {
+  color: #667085;
+  word-break: break-all;
+}
+
+.admission-review-grid,
+.admission-result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.admission-review-grid div,
+.admission-result-grid div {
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.admission-result-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.admission-result-grid.compact {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.admission-review-grid span,
+.admission-result-grid span {
+  display: block;
+  color: #667085;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.admission-review-grid strong,
+.admission-result-grid strong {
+  color: #101828;
+  word-break: break-all;
+}
+
+.access-result-card {
+  border-color: #bfdbfe;
+}
+
+.access-code-display {
+  background: #101828;
+  color: white;
+  border-radius: 18px;
+  padding: 26px;
+  text-align: center;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  margin-bottom: 16px;
+}
+
+.active-admission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.active-admission-card {
+  border: 1px solid #e6eaf2;
+  border-radius: 18px;
+  padding: 18px;
+  background: #ffffff;
+}
+
+.active-admission-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.active-admission-main h3 {
+  margin: 12px 0 6px;
+  color: #101828;
+  font-size: 24px;
+}
+
+.active-admission-main p {
+  margin: 0;
+  color: #667085;
+}
+
 .facility-grid-2 {
   display: grid;
   grid-template-columns: 1.4fr 0.8fr;
@@ -1278,7 +1433,11 @@ th {
   .facility-summary-grid,
   .quick-action-grid,
   .device-grid,
-  .process-grid {
+  .process-grid,
+  .select-card-list,
+  .admission-review-grid,
+  .admission-result-grid,
+  .admission-result-grid.compact {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -1297,8 +1456,16 @@ th {
   .facility-summary-grid,
   .quick-action-grid,
   .device-grid,
-  .process-grid {
+  .process-grid,
+  .select-card-list,
+  .admission-review-grid,
+  .admission-result-grid,
+  .admission-result-grid.compact {
     grid-template-columns: 1fr;
+  }
+
+  .active-admission-main {
+    flex-direction: column;
   }
 
   .log-item {

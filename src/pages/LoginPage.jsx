@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { getMe, login } from "../api/auth";
-import { saveAuth } from "../api/client";
+import { normalizeRole, saveAuth } from "../api/client";
 
 function getRoleHome(role) {
-  if (role === "ADMIN") return "/admin";
-  if (role === "FACILITY" || role === "FACILITY_MANAGER") return "/facility";
+  const normalizedRole = normalizeRole(role);
+
+  if (normalizedRole === "ADMIN") return "/admin";
+  if (normalizedRole === "FACILITY") return "/facility";
   return "/owner";
 }
 

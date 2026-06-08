@@ -11,9 +11,9 @@ import OwnerCageLivePage from "./pages/owner/OwnerCageLivePage";
 import OwnerReportPage from "./pages/owner/OwnerReportPage";
 import OwnerCageRegisterPage from "./pages/owner/OwnerCageRegisterPage";
 
-import FacilityDashboardPage from "./pages/facility/FacilityDashboardPage";
+import FacilityHomePage from "./pages/facility/FacilityHomePage";
 import FacilityCagesPage from "./pages/facility/FacilityCagesPage";
-import FacilitySessionsPage from "./pages/facility/FacilitySessionsPage";
+import FacilityAdmissionPage from "./pages/facility/FacilityAdmissionPage";
 import FacilityDevicesPage from "./pages/facility/FacilityDevicesPage";
 import FacilityLogsPage from "./pages/facility/FacilityLogsPage";
 
@@ -60,23 +60,27 @@ function App() {
 
         <Route
           path="/facility"
-          element={protectedPage(<FacilityDashboardPage />, ["FACILITY"])}
+          element={protectedPage(<FacilityHomePage />, ["FACILITY", "ADMIN"])}
         />
         <Route
           path="/facility/cages"
-          element={protectedPage(<FacilityCagesPage />, ["FACILITY"])}
+          element={protectedPage(<FacilityCagesPage />, ["FACILITY", "ADMIN"])}
+        />
+        <Route
+          path="/facility/admissions"
+          element={protectedPage(<FacilityAdmissionPage />, ["FACILITY", "ADMIN"])}
         />
         <Route
           path="/facility/sessions"
-          element={protectedPage(<FacilitySessionsPage />, ["FACILITY"])}
+          element={<Navigate to="/facility/admissions" replace />}
         />
         <Route
           path="/facility/devices"
-          element={protectedPage(<FacilityDevicesPage />, ["FACILITY"])}
+          element={protectedPage(<FacilityDevicesPage />, ["FACILITY", "ADMIN"])}
         />
         <Route
           path="/facility/logs"
-          element={protectedPage(<FacilityLogsPage />, ["FACILITY"])}
+          element={protectedPage(<FacilityLogsPage />, ["FACILITY", "ADMIN"])}
         />
 
         <Route path="/admin" element={protectedPage(<AdminDashboardPage />, ["ADMIN"])} />
