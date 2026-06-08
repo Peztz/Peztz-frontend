@@ -49,13 +49,14 @@ function SignupPage() {
       <section className="login-visual">
         <h1>Peztz</h1>
         <p>
-          견주 계정을 만들고 반려동물 케이지 영상과 일일 상태를 확인하세요.
+          견주는 반려동물을 등록하고, 병원과 시설은 케이지 입실과 보호자
+          접근 코드를 관리할 수 있습니다.
         </p>
       </section>
 
       <section className="login-panel">
         <h2>회원가입</h2>
-        <p>1차 연동은 견주 사용 흐름을 중심으로 제공합니다.</p>
+        <p>사용 목적에 맞는 계정 유형을 선택해주세요.</p>
 
         <form onSubmit={handleSubmit}>
           <label>이메일</label>
@@ -91,8 +92,7 @@ function SignupPage() {
           <label>역할</label>
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="OWNER">견주</option>
-            <option value="HOSPITAL">병원/시설</option>
-            <option value="FACILITY_MANAGER">시설 관리자</option>
+            <option value="HOSPITAL">병원/시설 관리자</option>
             <option value="ADMIN">시스템 관리자</option>
           </select>
 
