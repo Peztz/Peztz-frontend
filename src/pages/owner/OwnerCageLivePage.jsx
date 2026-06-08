@@ -1,62 +1,115 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+
+import { buildVideoUrl } from "../../api/client";
+import { getSessionDailyReport, getSessionLogs } from "../../api/owner";
 
 function OwnerCageLivePage() {
   const { cageId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [activeTab, setActiveTab] = useState("summary");
   const [question, setQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState("");
+  const [logs, setLogs] = useState([]);
+  const [report, setReport] = useState(null);
+  const [isLogsLoading, setIsLogsLoading] = useState(false);
+  const [isReportLoading, setIsReportLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [videoFailed, setVideoFailed] = useState(false);
 
   const cage = useMemo(() => {
-    const savedCages = JSON.parse(localStorage.getItem("peztz_owner_cages") || "[]");
+    if (location.state?.cage) {
+      return location.state.cage;
+    }
 
-    const foundCage = savedCages.find((item) => item.id === cageId);
+    const savedCages = JSON.parse(localStorage.getItem("peztz_owner_cages") || "[]");
+    const foundCage = savedCages.find((item) =>
+      [item.id, item.sessionId, item.cageId].map(String).includes(String(cageId))
+    );
 
     if (foundCage) {
       return foundCage;
     }
 
+    const lastVerifiedCage = JSON.parse(
+      localStorage.getItem("peztz_last_verified_cage") || "null"
+    );
+
+    if (
+      lastVerifiedCage &&
+      [lastVerifiedCage.id, lastVerifiedCage.sessionId, lastVerifiedCage.cageId]
+        .map(String)
+        .includes(String(cageId))
+    ) {
+      return lastVerifiedCage;
+    }
+
     return {
       id: cageId,
-      petName: "초코",
-      petBreed: "푸들",
-      facilityName: "A 펫호텔",
-      cageName: "1번 케이지",
+      sessionId: Number(cageId),
+      petName: "반려동물",
+      petBreed: "",
+      facilityName: "시설 정보 없음",
+      cageName: "케이지 정보 없음",
       status: "ACTIVE",
-      deviceStatus: "ONLINE",
-      temperature: "26.4°C",
-      humidity: "48%",
-      specialCount: 3,
-      reportStatus: "생성 완료",
-      isDemo: true,
+      deviceStatus: "UNKNOWN",
+      temperature: "-",
+      humidity: "-",
+      reportStatus: "조회 대기",
     };
-  }, [cageId]);
+  }, [cageId, location.state]);
 
-  const logs = [
-    {
-      id: 1,
-      time: "09:15",
-      type: "활동",
-      message: "케이지 내부에서 움직임이 감지되었습니다.",
-      level: "NORMAL",
-    },
-    {
-      id: 2,
-      time: "10:40",
-      type: "소리",
-      message: "짧은 짖음이 2회 감지되었습니다.",
-      level: "NORMAL",
-    },
-    {
-      id: 3,
-      time: "12:05",
-      type: "온도",
-      message: "케이지 내부 온도가 기준 범위보다 약간 높게 측정되었습니다.",
-      level: "WARNING",
-    },
-  ];
+  const sessionId = Number(cage.sessionId || cage.id);
+  const hasNumericSessionId = Number.isFinite(sessionId);
+  const videoUrl = buildVideoUrl({
+    deviceId: cage.raspberryPiDeviceId || cage.deviceId,
+    videoUrl: cage.videoUrl,
+  });
+
+  useEffect(() => {
+    const loadLogsAndReport = async () => {
+      if (!hasNumericSessionId) return;
+
+      setErrorMessage("");
+      setIsLogsLoading(true);
+      setIsReportLoading(true);
+
+      try {
+        const logData = await getSessionLogs(sessionId);
+        setLogs(logData);
+      } catch (error) {
+        setErrorMessage(
+          error.response?.data?.message || "세션 로그를 불러오지 못했습니다."
+        );
+      } finally {
+        setIsLogsLoading(false);
+      }
+
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const reportData = await getSessionDailyReport(sessionId, today);
+        setReport(reportData);
+      } catch {
+        setReport(null);
+      } finally {
+        setIsReportLoading(false);
+      }
+    };
+
+    loadLogsAndReport();
+  }, [hasNumericSessionId, sessionId]);
+
+  const displayLogs = logs.map((log) => ({
+    id: log.id,
+    time: log.createdAt ? log.createdAt.slice(11, 16) : "-",
+    type: log.type,
+    message: log.message || "메시지가 없습니다.",
+    level: log.type === "SENSOR" ? "NORMAL" : "INFO",
+    temperature: log.temperature,
+    humidity: log.humidity,
+  }));
 
   const handleAsk = () => {
     if (!question.trim()) {
@@ -65,7 +118,7 @@ function OwnerCageLivePage() {
     }
 
     setAiAnswer(
-      "현재는 LLM 연동 전 화면입니다. 나중에는 세션 로그와 특이사항을 기반으로 AI가 보호자 질문에 답변합니다."
+      "현재는 LLM 연동 전 화면입니다. 세션 로그와 일일 리포트 조회까지 1차 연결되어 있습니다."
     );
   };
 
@@ -80,28 +133,41 @@ function OwnerCageLivePage() {
           <span className="eyebrow">Live Monitoring</span>
           <h1>{cage.petName}의 실시간 케이지 상태</h1>
           <p>
-            {cage.facilityName} / {cage.cageName} · {cage.petBreed}
+            {cage.facilityName} / {cage.cageName} · {cage.petBreed || "품종 정보 없음"}
           </p>
         </div>
 
         <div className="live-status-box">
           <span className="badge blue">입실 중</span>
           <span
-            className={cage.deviceStatus === "ONLINE" ? "badge green" : "badge red"}
+            className={cage.deviceStatus === "ONLINE" ? "badge green" : "badge gray"}
           >
-            {cage.deviceStatus}
+            {cage.deviceStatus || "UNKNOWN"}
           </span>
         </div>
       </section>
 
+      {errorMessage && <div className="form-error">{errorMessage}</div>}
+
       <section className="live-main-grid">
         <div className="live-video-card">
           <div className="live-video-placeholder">
-            <div className="live-dot"></div>
-            <h2>실시간 스트리밍 화면</h2>
-            <p>
-              나중에 라즈베리파이 카메라 스트림이 이 영역에 연결됩니다.
-            </p>
+            {videoUrl && !videoFailed ? (
+              <img
+                className="live-video-stream"
+                src={videoUrl}
+                alt="실시간 케이지 영상"
+                onError={() => setVideoFailed(true)}
+              />
+            ) : (
+              <div className="video-empty-message">
+                <div className="live-dot"></div>
+                <h2>실시간 스트리밍을 표시할 수 없습니다</h2>
+                <p>라즈베리파이가 꺼져 있을 수 있습니다.</p>
+                <p>camera_stream.py가 실행 중인지 확인해주세요.</p>
+                <p>Tailscale IP가 서버에 등록되어 있는지 확인해주세요.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -109,6 +175,10 @@ function OwnerCageLivePage() {
           <h2>현재 상태</h2>
 
           <div className="live-info-list">
+            <div>
+              <span>세션 ID</span>
+              <strong>{hasNumericSessionId ? sessionId : "-"}</strong>
+            </div>
             <div>
               <span>반려동물</span>
               <strong>{cage.petName}</strong>
@@ -122,8 +192,8 @@ function OwnerCageLivePage() {
               <strong>{cage.cageName}</strong>
             </div>
             <div>
-              <span>연결 상태</span>
-              <strong>{cage.deviceStatus}</strong>
+              <span>영상 URL</span>
+              <strong>{videoUrl ? "연결됨" : "없음"}</strong>
             </div>
           </div>
         </aside>
@@ -135,8 +205,8 @@ function OwnerCageLivePage() {
           onClick={() => setActiveTab("summary")}
         >
           <span>현재 온도</span>
-          <strong>{cage.temperature}</strong>
-          <p>케이지 내부 온도</p>
+          <strong>{cage.temperature || "-"}</strong>
+          <p>최근 센서 온도</p>
         </button>
 
         <button
@@ -144,8 +214,8 @@ function OwnerCageLivePage() {
           onClick={() => setActiveTab("logs")}
         >
           <span>특이사항</span>
-          <strong>{logs.length}건</strong>
-          <p>시간별 이벤트 로그</p>
+          <strong>{displayLogs.length}건</strong>
+          <p>세션 이벤트 로그</p>
         </button>
 
         <button
@@ -153,8 +223,8 @@ function OwnerCageLivePage() {
           onClick={() => setActiveTab("report")}
         >
           <span>일일 리포트</span>
-          <strong>{cage.reportStatus}</strong>
-          <p>LLM 분석 예정</p>
+          <strong>{report ? "조회 완료" : cage.reportStatus || "조회 대기"}</strong>
+          <p>세션 기반 리포트</p>
         </button>
       </section>
 
@@ -169,19 +239,19 @@ function OwnerCageLivePage() {
 
           <div className="owner-detail-grid">
             <div>
-              <span>온도</span>
-              <strong>{cage.temperature}</strong>
-              <p>현재 케이지 내부 온도입니다.</p>
+              <span>평균 온도</span>
+              <strong>{report?.averageTemperature ?? cage.temperature ?? "-"}</strong>
+              <p>일일 리포트 또는 최근 케이지 온도입니다.</p>
             </div>
             <div>
-              <span>습도</span>
-              <strong>{cage.humidity || "48%"}</strong>
-              <p>케이지 내부 환경 정보입니다.</p>
+              <span>평균 습도</span>
+              <strong>{report?.averageHumidity ?? cage.humidity ?? "-"}</strong>
+              <p>일일 리포트 또는 최근 케이지 습도입니다.</p>
             </div>
             <div>
-              <span>최근 상태</span>
-              <strong>안정적</strong>
-              <p>최근 특이 행동은 많지 않습니다.</p>
+              <span>로그 수</span>
+              <strong>{report?.totalLogCount ?? displayLogs.length}</strong>
+              <p>조회된 세션 로그 기준입니다.</p>
             </div>
           </div>
         </section>
@@ -192,30 +262,32 @@ function OwnerCageLivePage() {
           <div className="section-header">
             <div>
               <h2>특이사항 로그</h2>
-              <p>센서, 소리, 온도, 활동 이벤트가 시간순으로 표시됩니다.</p>
+              <p>세션 로그가 시간순으로 표시됩니다.</p>
             </div>
           </div>
 
-          <div className="owner-log-list">
-            {logs.map((log) => (
-              <article className="owner-log-item" key={log.id}>
-                <div className="log-time">{log.time}</div>
+          {isLogsLoading ? (
+            <div className="small-empty">세션 로그를 불러오는 중입니다.</div>
+          ) : displayLogs.length === 0 ? (
+            <div className="small-empty">조회된 세션 로그가 없습니다.</div>
+          ) : (
+            <div className="owner-log-list">
+              {displayLogs.map((log) => (
+                <article className="owner-log-item" key={log.id}>
+                  <div className="log-time">{log.time}</div>
 
-                <div className="log-main">
-                  <div>
-                    <strong>{log.type}</strong>
-                    <p>{log.message}</p>
+                  <div className="log-main">
+                    <div>
+                      <strong>{log.type}</strong>
+                      <p>{log.message}</p>
+                    </div>
+
+                    <span className="badge green">{log.level}</span>
                   </div>
-
-                  <span
-                    className={log.level === "WARNING" ? "badge red" : "badge green"}
-                  >
-                    {log.level}
-                  </span>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -224,21 +296,17 @@ function OwnerCageLivePage() {
           <div className="section-header">
             <div>
               <h2>일일 리포트 / AI 질문</h2>
-              <p>
-                나중에 LLM이 특이사항 로그와 센서 데이터를 분석해서 보호자가
-                이해하기 쉬운 리포트를 생성합니다.
-              </p>
+              <p>세션 로그 기반 일일 리포트를 조회합니다.</p>
             </div>
           </div>
 
           <div className="report-box">
             <h3>오늘의 상태 요약</h3>
-            <p>
-              초코는 전반적으로 안정적인 상태를 보였습니다. 오전에는 짧은
-              움직임과 소리 이벤트가 있었고, 점심 시간대에 케이지 내부 온도가
-              약간 높게 측정되었습니다. 현재는 특이사항 없이 안정적으로
-              모니터링 중입니다.
-            </p>
+            {isReportLoading ? (
+              <p>일일 리포트를 불러오는 중입니다.</p>
+            ) : (
+              <p>{report?.summary || "아직 조회된 일일 리포트가 없습니다."}</p>
+            )}
           </div>
 
           <div className="ai-question-box">

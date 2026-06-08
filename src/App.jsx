@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import AppLayout from "./layouts/AppLayout";
 import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import OwnerHomePage from "./pages/owner/OwnerHomePage";
 import OwnerPetsPage from "./pages/owner/OwnerPetsPage";
@@ -25,45 +27,66 @@ function withLayout(page) {
   return <AppLayout>{page}</AppLayout>;
 }
 
+function protectedPage(page, allowedRoles) {
+  return (
+    <ProtectedRoute allowedRoles={allowedRoles}>
+      {withLayout(page)}
+    </ProtectedRoute>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
 
-        <Route path="/owner" element={withLayout(<OwnerHomePage />)} />
+        <Route path="/owner" element={protectedPage(<OwnerHomePage />, ["OWNER"])} />
         <Route
           path="/owner/register-cage"
-          element={withLayout(<OwnerCageRegisterPage />)}
+          element={protectedPage(<OwnerCageRegisterPage />, ["OWNER"])}
         />
-        <Route path="/owner/pets" element={withLayout(<OwnerPetsPage />)} />
+        <Route path="/owner/pets" element={protectedPage(<OwnerPetsPage />, ["OWNER"])} />
         <Route
           path="/owner/cages/:cageId/live"
-          element={withLayout(<OwnerCageLivePage />)}
+          element={protectedPage(<OwnerCageLivePage />, ["OWNER"])}
         />
-        <Route path="/owner/reports" element={withLayout(<OwnerReportPage />)} />
+        <Route
+          path="/owner/reports"
+          element={protectedPage(<OwnerReportPage />, ["OWNER"])}
+        />
 
-        <Route path="/facility" element={withLayout(<FacilityDashboardPage />)} />
-        <Route path="/facility/cages" element={withLayout(<FacilityCagesPage />)} />
+        <Route
+          path="/facility"
+          element={protectedPage(<FacilityDashboardPage />, ["FACILITY"])}
+        />
+        <Route
+          path="/facility/cages"
+          element={protectedPage(<FacilityCagesPage />, ["FACILITY"])}
+        />
         <Route
           path="/facility/sessions"
-          element={withLayout(<FacilitySessionsPage />)}
+          element={protectedPage(<FacilitySessionsPage />, ["FACILITY"])}
         />
         <Route
           path="/facility/devices"
-          element={withLayout(<FacilityDevicesPage />)}
+          element={protectedPage(<FacilityDevicesPage />, ["FACILITY"])}
         />
-        <Route path="/facility/logs" element={withLayout(<FacilityLogsPage />)} />
+        <Route
+          path="/facility/logs"
+          element={protectedPage(<FacilityLogsPage />, ["FACILITY"])}
+        />
 
-        <Route path="/admin" element={withLayout(<AdminDashboardPage />)} />
-        <Route path="/admin/users" element={withLayout(<AdminUsersPage />)} />
+        <Route path="/admin" element={protectedPage(<AdminDashboardPage />, ["ADMIN"])} />
+        <Route path="/admin/users" element={protectedPage(<AdminUsersPage />, ["ADMIN"])} />
         <Route
           path="/admin/facilities"
-          element={withLayout(<AdminFacilitiesPage />)}
+          element={protectedPage(<AdminFacilitiesPage />, ["ADMIN"])}
         />
-        <Route path="/admin/cages" element={withLayout(<AdminCagesPage />)} />
-        <Route path="/admin/devices" element={withLayout(<AdminDevicesPage />)} />
+        <Route path="/admin/cages" element={protectedPage(<AdminCagesPage />, ["ADMIN"])} />
+        <Route path="/admin/devices" element={protectedPage(<AdminDevicesPage />, ["ADMIN"])} />
       </Routes>
     </BrowserRouter>
   );

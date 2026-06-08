@@ -1,19 +1,58 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import { getMe, login } from "../api/auth";
+import { saveAuth } from "../api/client";
+
+function getRoleHome(role) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "FACILITY" || role === "FACILITY_MANAGER") return "/facility";
+  return "/owner";
+}
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [role, setRole] = useState("OWNER");
+  const location = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = () => {
-    localStorage.setItem("peztz_role", role);
+  const handleLogin = async (e) => {
+    e.preventDefault();
 
-    if (role === "OWNER") {
-      navigate("/owner");
-    } else if (role === "FACILITY") {
-      navigate("/facility");
-    } else if (role === "ADMIN") {
-      navigate("/admin");
+    if (!email.trim() || !password) {
+      setErrorMessage("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage("");
+
+    try {
+      const loginResponse = await login({
+        email: email.trim(),
+        password,
+      });
+
+      saveAuth(loginResponse.accessToken, loginResponse.user);
+
+      try {
+        const me = await getMe();
+        saveAuth(loginResponse.accessToken, me);
+      } catch {
+        // Login response is enough to keep the session usable.
+      }
+
+      const userRole = loginResponse.user?.role;
+      const fallbackPath = getRoleHome(userRole);
+      navigate(location.state?.from?.pathname || fallbackPath, { replace: true });
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message || "로그인에 실패했습니다. 계정 정보를 확인해주세요."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -30,16 +69,35 @@ function LoginPage() {
 
       <section className="login-panel">
         <h2>로그인</h2>
-        <p>테스트용 역할을 선택하고 화면을 확인하세요.</p>
+        <p>Peztz 계정으로 로그인하세요.</p>
 
-        <label>사용자 역할</label>
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="OWNER">견주</option>
-          <option value="FACILITY">시설 관리자</option>
-          <option value="ADMIN">시스템 관리자</option>
-        </select>
+        <form onSubmit={handleLogin}>
+          <label>이메일</label>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="owner@example.com"
+            type="email"
+          />
 
-        <button onClick={handleLogin}>Peztz 시작하기</button>
+          <label>비밀번호</label>
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="password1234"
+            type="password"
+          />
+
+          {errorMessage && <div className="form-error">{errorMessage}</div>}
+
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? "로그인 중..." : "Peztz 시작하기"}
+          </button>
+        </form>
+
+        <p className="login-help">
+          계정이 없나요? <Link to="/signup">회원가입</Link>
+        </p>
       </section>
     </div>
   );
