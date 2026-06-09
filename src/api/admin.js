@@ -1,21 +1,26 @@
 import springApi from "./client";
 
-export async function getAdminDevices() {
-  const { data } = await springApi.get("/api/raspberrypis");
-  return data;
-}
-
-export async function registerDevice(payload) {
-  const { data } = await springApi.post("/api/raspberrypis/register", payload);
+export async function getAdminSummary() {
+  const { data } = await springApi.get("/api/admin/summary");
   return data;
 }
 
 export async function getAdminFacilities() {
-  const { data } = await springApi.get("/api/facilities");
+  const { data } = await springApi.get("/api/admin/facilities");
   return data;
 }
 
 export async function getAdminCages() {
-  const { data } = await springApi.get("/api/cages");
+  const { data } = await springApi.get("/api/admin/cages");
+  return data;
+}
+
+export async function getAdminDevices() {
+  const { data } = await springApi.get("/api/admin/devices");
+  return data;
+}
+
+export async function getAdminUsers() {
+  const { data } = await springApi.get("/api/admin/users");
   return data;
 }
