@@ -60,9 +60,9 @@ function OwnerReportPage() {
     `;
 
     try {
-      // 🎯 억까 완전 박살: 정식 v1 주소에서 가장 확실하게 지원하는 'gemini-pro' 모델로 강제 타격합니다!
-      // (이 모델명은 구글 v1 API에서 무조건 404 없이 작동하는 가장 뼈대 깊은 모델입니다.)
-      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${SECRET_KEY}`;
+      // 🎯 돈 안 드는 100% 무료 티어 공식 주소 매핑!
+      // v1beta 주소창에 'gemini-1.5-flash-latest'를 꽂아야 무료 플랜으로 404 없이 즉시 통과됩니다!
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${SECRET_KEY}`;
 
       const response = await fetch(url, {
         method: "POST",
