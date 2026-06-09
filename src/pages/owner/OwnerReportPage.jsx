@@ -2,25 +2,34 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
+// 💡 날짜를 'YYYY-MM-DD' 형식의 문자열로 변환하는 헬퍼 함수
+const getTodayString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 function OwnerReportPage() {
-  const [petList, setPetList] = useState([]); // 🐶 SQL 규격 맞춤 반려동물 리스트
-  const [selectedPet, setSelectedPet] = useState(null); // 선택된 강아지
+  const [petList, setPetList] = useState([]); 
+  const [selectedPet, setSelectedPet] = useState(null); 
   const [report, setReport] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 1. 🔥 팀원들의 SQL 더미 데이터 규격과 100% 일치시킵니다.
+  // 1. 실제 팀 프로젝트에서 사용할 수 있는 UUID 규격의 시연용 더미 세팅
   useEffect(() => {
     const officialDummyPets = [
-      { id: 1, name: "초코 (푸들)", cageId: "55555555-5555-5555-5555-555555555555" },
-      { id: 2, name: "쿠키 (말티즈)", cageId: "66666666-6666-6666-6666-666666666666" },
-      { id: 3, name: "바닐라 (리트리버)", cageId: "77777777-7777-7777-7777-777777777777" }
+      { id: 1, name: "초코", petId: "7bf2b0d2-dd67-4002-929a-d4505f6af890", cageId: "55555555-5555-5555-5555-555555555555" },
+      { id: 2, name: "쿠키", petId: "8cf3c1e3-ee78-5003-a3ab-e5616f7bf901", cageId: "66666666-6666-6666-6666-666666666666" },
+      { id: 3, name: "바닐라", petId: "9df4d2f4-ff89-6004-b4bc-f672708cg012", cageId: "77777777-7777-7777-7777-777777777777" }
     ];
     setPetList(officialDummyPets);
-    setSelectedPet(officialDummyPets[0]); // 기본값으로 대망의 '초코' 선택!
+    setSelectedPet(officialDummyPets[0]); 
   }, []);
 
-  // 🚀 2. [보고서 보기] 버튼 클릭 시 요청
+  // 🚀 2. 팀 메인 서버(8080)의 정석 규격인 GET 방식으로 통신 슛!
   const handleFetchReport = async () => {
     if (!selectedPet) {
       setError("분석할 반려동물을 먼저 선택해 주세요.");
@@ -32,20 +41,29 @@ function OwnerReportPage() {
     setReport(""); 
 
     try {
-      // 🎯 맥북 터널로 연결된 진짜 스프링 부트(8080)의 리포트 생성 API를 정조준합니다!
-      const response = await axios.post("http://localhost:8080/api/report/generate", {
-        cage_id: selectedPet.cageId, // SQL에 박힌 55555555-... 가 그대로 날아감!
-        pet_name: selectedPet.name
+      const targetDate = getTodayString(); // '2026-06-10' 같은 오늘 날짜 생성
+      
+      // 🎯 핵심 수정: 팀원들이 만든 @GetMapping("/api/reports/daily") 규격에 맞게 쿼리 파라미터로 전송!
+      // 8500 포트가 아닌, 메인 백엔드인 8080 포트를 정조준합니다.
+      const response = await axios.get(`http://localhost:8080/api/reports/daily`, {
+        params: {
+          petId: selectedPet.petId,
+          date: targetDate
+        },
+        headers: {
+          // 필요시 인증 토큰 세팅 (우선 시연용 가짜 토큰 배치, required=false라 없어도 통과됩니다)
+          Authorization: "Bearer sample-token"
+        }
       });
 
-      // 스프링이 리턴해주는 DTO 구조에 맞게 매핑
-      if (response.data && (response.data.report || response.data.status === "success")) {
-        setReport(response.data.report || response.data.text); 
+      // 🎯 스프링 서비스의 buildReport가 최종 반환해주는 'summary' 필드에 준님의 제미나이 리포트가 실려옵니다!
+      if (response.data && response.data.summary) {
+        setReport(response.data.summary); 
       } else {
-        setError("리포트 생성에 실패했습니다. 스프링 반환 값 구조를 확인해 주세요.");
+        setError("리포트 데이터를 정상적으로 불러왔으나 요약 내용(summary)이 비어있습니다.");
       }
     } catch (err) {
-      setError("❌ 스프링 서버(8080번 포트) 통신 실패! SSH 터널링 상태나 스프링 API 주소를 확인해 주세요.");
+      setError("❌ 메인 백엔드 서버(8080번 포트) 통신 실패! 스프링 DailyReportService의 연동 상태를 확인해 주세요.");
       console.error(err);
     } finally {
       setIsLoading(false); 
@@ -59,9 +77,8 @@ function OwnerReportPage() {
         <p style={styles.subtitle}>반려동물의 실시간 Vision AI 행동 로그를 분석한 수의사 소견서입니다.</p>
       </div>
 
-      {/* 🔘 라디오 버튼 선택 영역 (공식 시연용 테스트 모드) */}
       <div style={styles.petSelectorContainer}>
-        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (시연용 SQL 데이터 세트 연동)</p>
+        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (팀 규격 연동 완료)</p>
         <div style={styles.radioGroup}>
           {petList.map((pet) => (
             <label key={pet.id} style={{
@@ -76,15 +93,13 @@ function OwnerReportPage() {
                 onChange={() => setSelectedPet(pet)}
                 style={styles.radioInput}
               />
-              <input type="radio" style={{ display: 'none' }} />
               <strong style={styles.petNameText}>{pet.name}</strong>
-              {pet.cageId && <span style={styles.cageText}>({pet.cageId.substring(0,8)}... 케이지)</span>}
+              <span style={styles.cageText}>({pet.petId.substring(0,8)}... 펫 ID)</span>
             </label>
           ))}
         </div>
       </div>
 
-      {/* 🟢 보고서 보기 버튼 */}
       <div style={styles.buttonContainer}>
         <button 
           onClick={handleFetchReport} 
@@ -99,10 +114,8 @@ function OwnerReportPage() {
         </button>
       </div>
 
-      {/* 에러 메시지 */}
       {error && <div style={styles.errorBox}>{error}</div>}
 
-      {/* 📊 결과 출력 영역 (제미나이 마크다운 렌더링) */}
       {report && (
         <div style={styles.reportBox} className="markdown-body">
           <ReactMarkdown>{report}</ReactMarkdown>
