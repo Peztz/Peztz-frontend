@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { createPet, deletePet, getMyPets } from "../../api/pets";
+import { createPet, deletePet, getMyPets, updatePet } from "../../api/pets";
 import { formatPetAge } from "../../utils/petAge";
 
 function OwnerPetsPage() {
@@ -8,6 +8,7 @@ function OwnerPetsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const [name, setName] = useState("");
@@ -17,6 +18,12 @@ function OwnerPetsPage() {
   const [birthDate, setBirthDate] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [medicalNote, setMedicalNote] = useState("");
+
+  const [editingPet, setEditingPet] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editBreed, setEditBreed] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
+  const [editMedicalNote, setEditMedicalNote] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -58,6 +65,23 @@ function OwnerPetsPage() {
     setBirthDate("");
     setWeightKg("");
     setMedicalNote("");
+  };
+
+  const openEditForm = (pet) => {
+    setEditingPet(pet);
+    setEditName(pet.name || "");
+    setEditBreed(pet.breed || pet.petBreed || "");
+    setEditBirthDate(pet.birthDate || "");
+    setEditMedicalNote(pet.memo || pet.medicalNote || "");
+    setErrorMessage("");
+  };
+
+  const closeEditForm = () => {
+    setEditingPet(null);
+    setEditName("");
+    setEditBreed("");
+    setEditBirthDate("");
+    setEditMedicalNote("");
   };
 
   const handleSubmit = async (e) => {
@@ -115,6 +139,53 @@ function OwnerPetsPage() {
       setErrorMessage(
         error.response?.data?.message || "반려동물 삭제에 실패했습니다."
       );
+    }
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+
+    if (!editingPet) return;
+
+    if (!editName.trim()) {
+      alert("반려동물 이름을 입력해주세요.");
+      return;
+    }
+
+    if (!editBreed.trim()) {
+      alert("품종/견종을 입력해주세요.");
+      return;
+    }
+
+    setIsUpdating(true);
+    setErrorMessage("");
+
+    const payload = {
+      name: editName.trim(),
+      breed: editBreed.trim(),
+      birthDate: editBirthDate || null,
+      memo: editMedicalNote.trim(),
+    };
+
+    if (editingPet.species) payload.species = editingPet.species;
+    if (editingPet.gender) payload.gender = editingPet.gender;
+    if (editingPet.weightKg != null) payload.weightKg = editingPet.weightKg;
+
+    try {
+      const updatedPet = await updatePet(editingPet.id, payload);
+      const nextPets = pets.map((pet) =>
+        pet.id === editingPet.id ? updatedPet : pet
+      );
+
+      setPets(nextPets);
+      localStorage.setItem("peztz_owner_pets", JSON.stringify(nextPets));
+      closeEditForm();
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message || "반려동물 수정에 실패했습니다."
+      );
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -232,6 +303,71 @@ function OwnerPetsPage() {
         </section>
       )}
 
+      {editingPet && (
+        <section className="content-card">
+          <div className="section-header">
+            <div>
+              <h2>반려동물 정보 수정</h2>
+              <p>이름, 품종/견종, 생년월일, 주의사항을 수정합니다.</p>
+            </div>
+          </div>
+
+          <form className="clean-form" onSubmit={handleUpdate}>
+            <div className="form-grid">
+              <div className="form-field">
+                <label>이름</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="예: 초코"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>품종 / 견종</label>
+                <input
+                  value={editBreed}
+                  onChange={(e) => setEditBreed(e.target.value)}
+                  placeholder="예: 푸들, 말티즈, 포메라니안"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>생년월일</label>
+                <input
+                  type="date"
+                  value={editBirthDate}
+                  onChange={(e) => setEditBirthDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="form-field">
+              <label>주의사항</label>
+              <textarea
+                value={editMedicalNote}
+                onChange={(e) => setEditMedicalNote(e.target.value)}
+                placeholder="예: 낯선 사람을 무서워함, 특정 사료 알레르기 있음"
+                rows={4}
+              />
+            </div>
+
+            <div className="button-row">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={closeEditForm}
+              >
+                취소
+              </button>
+              <button type="submit" className="primary-button" disabled={isUpdating}>
+                {isUpdating ? "저장 중..." : "저장하기"}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
       <section className="content-card">
         <div className="section-header">
           <div>
@@ -268,12 +404,20 @@ function OwnerPetsPage() {
                   </p>
                 </div>
 
-                <button
-                  className="text-danger-button"
-                  onClick={() => handleDelete(pet.id)}
-                >
-                  삭제
-                </button>
+                <div className="pet-card-actions">
+                  <button
+                    className="mini-button"
+                    onClick={() => openEditForm(pet)}
+                  >
+                    수정
+                  </button>
+                  <button
+                    className="text-danger-button"
+                    onClick={() => handleDelete(pet.id)}
+                  >
+                    삭제
+                  </button>
+                </div>
               </article>
             ))}
           </div>

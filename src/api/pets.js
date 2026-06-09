@@ -10,6 +10,11 @@ export async function createPet(payload) {
   return data;
 }
 
+export async function updatePet(petId, payload) {
+  const { data } = await springApi.put(`/api/pets/${petId}`, payload);
+  return data;
+}
+
 export async function deletePet(petId) {
   await springApi.delete(`/api/pets/${petId}`);
 }
