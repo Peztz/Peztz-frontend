@@ -1,15 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
-// 💡 날짜를 'YYYY-MM-DD' 형식의 문자열로 변환하는 헬퍼 함수
-const getTodayString = () => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+// 🎯 준님의 Gemini API 키를 여기에 입력하세요!
+const GEMINI_API_KEY = "AQ.Ab8RN6KoQnmETmbzfxHRUZaTYj_7BSjBhA0Cu1nQo1oHzfzQig";
 
 function OwnerReportPage() {
   const [petList, setPetList] = useState([]); 
@@ -18,21 +11,26 @@ function OwnerReportPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 1. 실제 팀 프로젝트에서 사용하는 UUID 규격의 시연용 더미 데이터 세팅
+  // 1. 실제 팀 프로젝트 규격의 시연용 더미 데이터 세팅
   useEffect(() => {
     const officialDummyPets = [
-      { id: 1, name: "초코", petId: "7bf2b0d2-dd67-4002-929a-d4505f6af890", cageId: "55555555-5555-5555-5555-555555555555" },
-      { id: 2, name: "쿠키", petId: "8cf3c1e3-ee78-5003-a3ab-e5616f7bf901", cageId: "66666666-6666-6666-6666-666666666666" },
-      { id: 3, name: "바닐라", petId: "9df4d2f4-ff89-6004-b4bc-f672708cg012", cageId: "77777777-7777-7777-7777-777777777777" }
+      { id: 1, name: "초코", cageId: "55555555-5555-5555-5555-555555555555" },
+      { id: 2, name: "쿠키", cageId: "66666666-6666-6666-6666-666666666666" },
+      { id: 3, name: "바닐라", cageId: "77777777-7777-7777-7777-777777777777" }
     ];
     setPetList(officialDummyPets);
     setSelectedPet(officialDummyPets[0]); 
   }, []);
 
-  // 🚀 2. Vercel 배포 사이트 보안을 뚫기 위해 메인 스프링 백엔드(8080)를 경유합니다!
+  // 🚀 2. 백엔드(8080/8500) 완전 배제! 프론트에서 구글 Gemini API 다이렉트 호출 슛
   const handleFetchReport = async () => {
     if (!selectedPet) {
       setError("분석할 반려동물을 먼저 선택해 주세요.");
+      return;
+    }
+
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("여기에")) {
+      setError("❌ 코드 상단의 GEMINI_API_KEY 변수에 실제 API 키를 입력해 주세요!");
       return;
     }
 
@@ -40,26 +38,51 @@ function OwnerReportPage() {
     setError(""); 
     setReport(""); 
 
-    try {
-      const targetDate = getTodayString(); // '2026-06-10' 오늘 날짜 자동 생성
+    // 시연 시 몰입감을 위한 펫별 맞춤 가짜 행동 로그 생성
+    const mockLogs = {
+      "초코": "오전 08:00 식사 완료, 오후 02:00 케이지 내부 우측 활동량 급증, 오후 04:00 수면 진입, 누적 음수량 150ml.",
+      "쿠키": "오전 09:10 식사 지연, 오후 01:00 쳇바퀴 구동 20분 지속, 오후 06:00 구석 긁는 행동 관찰, 누적 음수량 90ml.",
+      "바닐라": "오전 07:30 식사 완료, 오후 03:00 무기력하게 누워있는 시간 증가, 오후 07:00 음수 거부 징후, 누적 음수량 50ml."
+    };
+
+    // 제미나이에게 던질 명품 프롬프트 세팅
+    const prompt = `
+      너는 스마트 케이지 원격 헬스케어 서비스 'Peztz'의 전문 수의사 AI 엔진이야.
+      아래 제공되는 반려동물의 이름과 오늘 생성된 Vision AI 행동 로그를 바탕으로, 보호자가 안심하고 읽을 수 있는 '일일 건강 리포트 소견서'를 정중하고 전문적인 한국어 마크다운(Markdown) 형태로 작성해줘.
       
-      // 🎯 8500번 파이썬 직접 타격 금지! (크롬이 Mixed Content로 막음)
-      // 준님이 1단계에서 구동한 GCP 우분투 내부의 스프링 백엔드(8080)로 신호를 쏩니다.
-      const response = await axios.get("http://34.50.7.78:8080/api/reports/daily", {
-        params: {
-          petId: selectedPet.petId,
-          date: targetDate
-        }
+      반려동물 이름: ${selectedPet.name}
+      오늘의 행동 로그 데이터: ${mockLogs[selectedPet.name] || "정상 활동 패턴 유지."}
+      
+      [출력 양식 필수 가이드]
+      ## 🐾 AI 반려동물 일일 건강 리포트 (${selectedPet.name})
+      ### 📊 24시간 행동 지표 분석
+      (로그를 기반으로 식사, 수면, 활동성에 대한 분석 요약)
+      ### 🩺 수의사 종합 소견
+      (수의사 톤앤매너로 친절하고 전문적인 상태 진단)
+      ### 💡 맞춤 케어 가이드
+      (오늘 데이터 기준 앞으로 보호자가 주의해야 할 점 2가지 제시)
+    `;
+
+    try {
+      // 🎯 크롬 보안 정책을 완벽하게 우회하는 구글 제미나이 공식 HTTPS 엔드포인트 타격!
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
       });
 
-      // 🎯 스프링 컨트롤러에서 최종 응답해 주는 'summary' 필드 매핑
-      if (response.data && response.data.summary) {
-        setReport(response.data.summary); 
+      const data = await response.json();
+      
+      if (data.candidates && data.candidates[0].content.parts[0].text) {
+        const generatedText = data.candidates[0].content.parts[0].text;
+        setReport(generatedText); // 촥 화면에 마크다운으로 렌더링!
       } else {
-        setError("리포트 데이터를 정상적으로 불러왔으나 요약 내용(summary)이 비어있습니다.");
+        throw new Error("Gemini API 응답 구조가 올바르지 않습니다.");
       }
     } catch (err) {
-      setError("❌ 메인 백엔드 서버(8080번 포트) 통신 실패! GCP 서버에서 스프링 부트가 구동 중인지 확인하세요.");
+      setError("❌ Gemini AI 엔진 호출 실패! API 키 유효성이나 네트워크 상태를 확인하세요.");
       console.error(err);
     } finally {
       setIsLoading(false); 
@@ -74,7 +97,7 @@ function OwnerReportPage() {
       </div>
 
       <div style={styles.petSelectorContainer}>
-        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (정석 아키텍처 연동)</p>
+        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (Edge AI Direct Mode)</p>
         <div style={styles.radioGroup}>
           {petList.map((pet) => (
             <label key={pet.id} style={{
@@ -90,7 +113,7 @@ function OwnerReportPage() {
                 style={styles.radioInput}
               />
               <strong style={styles.petNameText}>{pet.name}</strong>
-              <span style={styles.cageText}>({pet.petId.substring(0,8)}... 펫 ID)</span>
+              <span style={styles.cageText}>({pet.cageId.substring(0,8)}... 케이지)</span>
             </label>
           ))}
         </div>
@@ -106,7 +129,7 @@ function OwnerReportPage() {
             cursor: isLoading ? 'not-allowed' : 'pointer'
           }}
         >
-          {isLoading ? `${selectedPet?.name}의 로그 분석 중... 🔄` : "보고서 보기"}
+          {isLoading ? `${selectedPet?.name}의 실시간 로그 분석 중... 🔄` : "보고서 보기"}
         </button>
       </div>
 
