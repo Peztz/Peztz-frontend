@@ -10,6 +10,19 @@ export async function getAdminFacilities() {
   return data;
 }
 
+export async function createAdminFacility(payload) {
+  const { data } = await springApi.post("/api/admin/facilities", payload);
+  return data;
+}
+
+export async function updateAdminFacility(facilityId, payload) {
+  const { data } = await springApi.patch(
+    `/api/admin/facilities/${facilityId}`,
+    payload
+  );
+  return data;
+}
+
 export async function getAdminCages() {
   const { data } = await springApi.get("/api/admin/cages");
   return data;

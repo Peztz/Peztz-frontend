@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getAdminCages,
   getAdminDevices,
@@ -27,6 +27,13 @@ function displayStatus(status) {
   if (status === "AVAILABLE") return "사용 가능";
   if (status === "정상") return "정상";
   return displayValue(status);
+}
+
+function getStatusFilterGroup(status) {
+  if (status === "OCCUPIED") return "OCCUPIED";
+  if (status === "AVAILABLE") return "AVAILABLE";
+  if (status === "정상") return "NORMAL";
+  return "OTHER";
 }
 
 function getStatusBadge(status) {
@@ -90,6 +97,9 @@ function AdminCagesPage() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [facilityFilter, setFacilityFilter] = useState("");
+  const [deviceFilter, setDeviceFilter] = useState("");
   const [selectedCage, setSelectedCage] = useState(null);
   const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -117,23 +127,53 @@ function AdminCagesPage() {
   useEffect(() => {
     let isMounted = true;
 
-    getAdminCages()
-      .then((data) => {
-        if (isMounted) setCages(toArray(data));
-      })
-      .catch((error) => {
+    async function fetchInitialData() {
+      try {
+        setLoading(true);
+        setErrorMessage("");
+        const cageData = await getAdminCages();
+        if (isMounted) setCages(toArray(cageData));
+      } catch (error) {
         if (!isMounted) return;
         console.error("관리자 케이지 조회 실패:", error);
         setErrorMessage("데이터를 불러오지 못했습니다.");
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) setLoading(false);
-      });
+      }
+
+      try {
+        const facilityData = await getAdminFacilities();
+        if (isMounted) setFacilities(toArray(facilityData));
+      } catch (error) {
+        console.error("관리자 시설 필터 목록 조회 실패:", error);
+      }
+    }
+
+    fetchInitialData();
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  const filteredCages = useMemo(() => {
+    return cages.filter((cage) => {
+      const status = displayValue(cage.status);
+      const facilityId = String(getCageFacilityId(cage) ?? "");
+      const deviceId = getCageDeviceId(cage);
+
+      const matchesStatus =
+        !statusFilter || getStatusFilterGroup(status) === statusFilter;
+      const matchesFacility =
+        !facilityFilter || facilityId === String(facilityFilter);
+      const matchesDevice =
+        !deviceFilter ||
+        (deviceFilter === "CONNECTED" && Boolean(deviceId)) ||
+        (deviceFilter === "UNCONNECTED" && !deviceId);
+
+      return matchesStatus && matchesFacility && matchesDevice;
+    });
+  }, [cages, deviceFilter, facilityFilter, statusFilter]);
 
   const loadAssignmentOptions = async () => {
     if (facilities.length > 0 && devices.length > 0) return;
@@ -143,11 +183,11 @@ function AdminCagesPage() {
       setAssignmentError("");
 
       const [facilityData, deviceData] = await Promise.all([
-        getAdminFacilities(),
+        facilities.length > 0 ? facilities : getAdminFacilities(),
         getAdminDevices(),
       ]);
 
-      setFacilities(toArray(facilityData));
+      if (facilities.length === 0) setFacilities(toArray(facilityData));
       setDevices(toArray(deviceData));
     } catch (error) {
       console.error("케이지 연결 선택 목록 조회 실패:", error);
@@ -253,9 +293,60 @@ function AdminCagesPage() {
         <div className="section-header">
           <div>
             <h2>전체 케이지 목록</h2>
-            <p>시설별 케이지와 연결 장비, 현재 상태를 확인합니다.</p>
+            <p>상태, 시설, 장비 연결 여부로 케이지 목록을 필터링합니다.</p>
           </div>
-          <span className="count-badge">{cages.length}개</span>
+          <span className="count-badge">{filteredCages.length}개</span>
+        </div>
+
+        <div className="admin-filter-bar">
+          <div className="filter-field">
+            <label htmlFor="cage-status-filter">상태</label>
+            <select
+              id="cage-status-filter"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="">전체</option>
+              <option value="OCCUPIED">입실 중</option>
+              <option value="AVAILABLE">사용 가능</option>
+              <option value="NORMAL">정상</option>
+              <option value="OTHER">기타</option>
+            </select>
+          </div>
+          <div className="filter-field">
+            <label htmlFor="cage-facility-filter">시설</label>
+            <select
+              id="cage-facility-filter"
+              value={facilityFilter}
+              onChange={(event) => setFacilityFilter(event.target.value)}
+            >
+              <option value="">전체 시설</option>
+              {facilities.map((facility, index) => {
+                const facilityId = getFacilityId(facility);
+
+                return (
+                  <option
+                    key={facilityId ?? `facility-${index}`}
+                    value={String(facilityId ?? "")}
+                  >
+                    {displayValue(getFacilityName(facility), "이름 없음")}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+          <div className="filter-field">
+            <label htmlFor="cage-device-filter">장비 연결</label>
+            <select
+              id="cage-device-filter"
+              value={deviceFilter}
+              onChange={(event) => setDeviceFilter(event.target.value)}
+            >
+              <option value="">전체</option>
+              <option value="CONNECTED">장비 연결됨</option>
+              <option value="UNCONNECTED">장비 미연결</option>
+            </select>
+          </div>
         </div>
 
         {loading && <p>불러오는 중...</p>}
@@ -265,7 +356,11 @@ function AdminCagesPage() {
           <p>조회된 케이지가 없습니다.</p>
         )}
 
-        {!loading && !errorMessage && cages.length > 0 && (
+        {!loading && !errorMessage && cages.length > 0 && filteredCages.length === 0 && (
+          <p>조건에 맞는 케이지가 없습니다.</p>
+        )}
+
+        {!loading && !errorMessage && filteredCages.length > 0 && (
           <div className="admin-table-wrap">
             <table className="admin-table cage-table">
               <thead>
@@ -280,7 +375,7 @@ function AdminCagesPage() {
                 </tr>
               </thead>
               <tbody>
-                {cages.map((cage, index) => {
+                {filteredCages.map((cage, index) => {
                   const status = displayValue(cage.status);
                   const cageId = getCageId(cage);
 

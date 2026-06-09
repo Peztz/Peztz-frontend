@@ -52,8 +52,7 @@ function AdminDashboardPage() {
           <span className="eyebrow">System Admin</span>
           <h1>시스템 관리자 대시보드</h1>
           <p>
-            전체 회원, 시설, 케이지, 장비 상태를 백엔드 관리자 API 기준으로
-            확인합니다.
+            전체 회원, 시설, 케이지, 장비 상태를 관리자 API 기준으로 확인합니다.
           </p>
         </div>
 
@@ -114,7 +113,7 @@ function AdminDashboardPage() {
                 <p>조회된 시설이 없습니다.</p>
               ) : (
                 <div className="admin-table-wrap">
-                  <table className="admin-table">
+                  <table className="admin-table dashboard-facility-table">
                     <thead>
                       <tr>
                         <th>시설 ID</th>
@@ -122,7 +121,6 @@ function AdminDashboardPage() {
                         <th>케이지</th>
                         <th>입실 중</th>
                         <th>장비 이상</th>
-                        <th>상태</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -171,11 +169,6 @@ function AdminDashboardPage() {
                                 className={issueCount > 0 ? "badge red" : "badge green"}
                               >
                                 {issueCount}건
-                              </span>
-                            </td>
-                            <td>
-                              <span className="badge blue">
-                                {displayValue(facility.status)}
                               </span>
                             </td>
                           </tr>
