@@ -3,31 +3,21 @@ import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
 function OwnerReportPage() {
-  const [petList, setPetList] = useState([]); // 🐶 견주의 진짜 반려동물 목록
-  const [selectedPet, setSelectedPet] = useState(null); // 선택된 반려동물
+  const [petList, setPetList] = useState([]); // 🐶 SQL 규격 맞춤 반려동물 리스트
+  const [selectedPet, setSelectedPet] = useState(null); // 선택된 강아지
   const [report, setReport] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 1. 화면이 켜지면 메인 스프링 서버(8080)에서 진짜 강아지 목록을 가져옵니다.
+  // 1. 🔥 팀원들의 SQL 더미 데이터 규격과 100% 일치시킵니다.
   useEffect(() => {
-    const fetchMyPets = async () => {
-      try {
-        // ⚠️ 팀원들이 만들어둔 "내 반려동물 목록 조회" API 주소 (예: /api/pets)
-        const response = await axios.get("http://localhost:8080/api/pets"); 
-        if (response.data && response.data.length > 0) {
-          setPetList(response.data);
-          setSelectedPet(response.data[0]); // 첫 번째 강아지 기본 선택
-        } else {
-          setError("ℹ️ 등록된 반려동물이 없습니다. 먼저 반려동물을 등록해 주세요.");
-        }
-      } catch (err) {
-        console.error("반려동물 목록 로드 실패:", err);
-        setError("❌ 스프링 서버로부터 반려동물 목록을 불러오지 못했습니다.");
-      }
-    };
-
-    fetchMyPets();
+    const officialDummyPets = [
+      { id: 1, name: "초코 (푸들)", cageId: "55555555-5555-5555-5555-555555555555" },
+      { id: 2, name: "쿠키 (말티즈)", cageId: "66666666-6666-6666-6666-666666666666" },
+      { id: 3, name: "바닐라 (리트리버)", cageId: "77777777-7777-7777-7777-777777777777" }
+    ];
+    setPetList(officialDummyPets);
+    setSelectedPet(officialDummyPets[0]); // 기본값으로 대망의 '초코' 선택!
   }, []);
 
   // 🚀 2. [보고서 보기] 버튼 클릭 시 요청
@@ -42,20 +32,20 @@ function OwnerReportPage() {
     setReport(""); 
 
     try {
-      // 🔥 오직 8080번 메인 스프링 서버의 리포트 생성 API만 정조준합니다!
+      // 🎯 맥북 터널로 연결된 진짜 스프링 부트(8080)의 리포트 생성 API를 정조준합니다!
       const response = await axios.post("http://localhost:8080/api/report/generate", {
-        cage_id: selectedPet.cageId, // 팀원들이 정의한 DTO 필드명(cage_id 등)에 맞게 매핑
+        cage_id: selectedPet.cageId, // SQL에 박힌 55555555-... 가 그대로 날아감!
         pet_name: selectedPet.name
       });
 
-      // 스프링이 성공 응답과 함께 리포트 텍스트를 주면 출력
+      // 스프링이 리턴해주는 DTO 구조에 맞게 매핑
       if (response.data && (response.data.report || response.data.status === "success")) {
-        setReport(response.data.report); 
+        setReport(response.data.report || response.data.text); 
       } else {
-        setError("리포트 생성에 실패했습니다.");
+        setError("리포트 생성에 실패했습니다. 스프링 반환 값 구조를 확인해 주세요.");
       }
     } catch (err) {
-      setError("❌ 스프링 서버(8080번 포트) 통신 실패! 서버 상태를 확인해 주세요.");
+      setError("❌ 스프링 서버(8080번 포트) 통신 실패! SSH 터널링 상태나 스프링 API 주소를 확인해 주세요.");
       console.error(err);
     } finally {
       setIsLoading(false); 
@@ -69,9 +59,9 @@ function OwnerReportPage() {
         <p style={styles.subtitle}>반려동물의 실시간 Vision AI 행동 로그를 분석한 수의사 소견서입니다.</p>
       </div>
 
-      {/* 🔘 라디오 버튼 선택 영역 (실제 내 강아지들 목록) */}
+      {/* 🔘 라디오 버튼 선택 영역 (공식 시연용 테스트 모드) */}
       <div style={styles.petSelectorContainer}>
-        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요</p>
+        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (시연용 SQL 데이터 세트 연동)</p>
         <div style={styles.radioGroup}>
           {petList.map((pet) => (
             <label key={pet.id} style={{
@@ -86,6 +76,7 @@ function OwnerReportPage() {
                 onChange={() => setSelectedPet(pet)}
                 style={styles.radioInput}
               />
+              <input type="radio" style={{ display: 'none' }} />
               <strong style={styles.petNameText}>{pet.name}</strong>
               {pet.cageId && <span style={styles.cageText}>({pet.cageId.substring(0,8)}... 케이지)</span>}
             </label>
@@ -104,14 +95,14 @@ function OwnerReportPage() {
             cursor: isLoading ? 'not-allowed' : 'pointer'
           }}
         >
-          {isLoading ? `${selectedPet?.name} 로그 분석 중... 🔄` : "보고서 보기"}
+          {isLoading ? `${selectedPet?.name}의 로그 분석 중... 🔄` : "보고서 보기"}
         </button>
       </div>
 
       {/* 에러 메시지 */}
       {error && <div style={styles.errorBox}>{error}</div>}
 
-      {/* 📊 결과 출력 영역 */}
+      {/* 📊 결과 출력 영역 (제미나이 마크다운 렌더링) */}
       {report && (
         <div style={styles.reportBox} className="markdown-body">
           <ReactMarkdown>{report}</ReactMarkdown>
