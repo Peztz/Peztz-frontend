@@ -24,6 +24,18 @@ export async function createFacilityCage(
   return data;
 }
 
+export async function updateFacilityCage(
+  facilityId = DEFAULT_FACILITY_ID,
+  cageId,
+  payload
+) {
+  const { data } = await springApi.patch(
+    `/api/facilities/${facilityId}/cages/${cageId}`,
+    payload
+  );
+  return data;
+}
+
 export async function getOwnerPetsByEmail(
   ownerEmail,
   facilityId = DEFAULT_FACILITY_ID

@@ -1219,6 +1219,21 @@ th {
   border-bottom: none;
 }
 
+.facility-cage-table {
+  min-width: 980px;
+}
+
+.facility-cage-actions-column,
+.facility-cage-actions-cell {
+  width: 110px;
+  min-width: 110px;
+}
+
+.edit-cage-button {
+  min-width: 72px;
+  white-space: nowrap;
+}
+
 .alert-list {
   display: flex;
   flex-direction: column;

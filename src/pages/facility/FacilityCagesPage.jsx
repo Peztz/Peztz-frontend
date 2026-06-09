@@ -4,9 +4,28 @@ import {
   DEFAULT_FACILITY_ID,
   createFacilityCage,
   getFacilityCages,
+  updateFacilityCage,
 } from "../../api/facility";
 
 const DEFAULT_DEVICE_ID = "7bf2b0d2-dd67-4002-929a-d4505f6af890";
+
+function displayValue(value, fallback = "-") {
+  if (value === null || value === undefined || value === "" || value === "-") {
+    return fallback;
+  }
+
+  return value;
+}
+
+function getCageId(cage) {
+  return cage.id ?? cage.cageId;
+}
+
+function getStatusBadge(status) {
+  if (status === "AVAILABLE") return "badge green";
+  if (status === "OCCUPIED") return "badge blue";
+  return "badge red";
+}
 
 function FacilityCagesPage() {
   const [cages, setCages] = useState([]);
@@ -18,6 +37,16 @@ function FacilityCagesPage() {
   const [name, setName] = useState("");
   const [cageNumber, setCageNumber] = useState("");
   const [raspberryPiDeviceId, setRaspberryPiDeviceId] = useState(DEFAULT_DEVICE_ID);
+
+  const [editingCage, setEditingCage] = useState(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editErrorMessage, setEditErrorMessage] = useState("");
+  const [editForm, setEditForm] = useState({
+    name: "",
+    cageNumber: "",
+    raspberryPiDeviceId: "",
+  });
 
   const loadCages = async () => {
     setErrorMessage("");
@@ -70,8 +99,34 @@ function FacilityCagesPage() {
     setRaspberryPiDeviceId(DEFAULT_DEVICE_ID);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const openEditModal = (cage) => {
+    setEditingCage(cage);
+    setEditForm({
+      name: String(cage.name ?? ""),
+      cageNumber: String(cage.cageNumber ?? ""),
+      raspberryPiDeviceId: String(cage.raspberryPiDeviceId ?? ""),
+    });
+    setEditErrorMessage("");
+    setIsEditOpen(true);
+  };
+
+  const closeEditModal = () => {
+    if (isUpdating) return;
+    setIsEditOpen(false);
+    setEditingCage(null);
+    setEditErrorMessage("");
+  };
+
+  const handleEditFormChange = (event) => {
+    const { name: fieldName, value } = event.target;
+    setEditForm((prev) => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     if (!name.trim() || !cageNumber.trim() || !raspberryPiDeviceId.trim()) {
       setErrorMessage("케이지명, 케이지 번호, Raspberry Pi deviceId를 입력해주세요.");
@@ -101,10 +156,53 @@ function FacilityCagesPage() {
     }
   };
 
-  const getStatusBadge = (status) => {
-    if (status === "AVAILABLE") return "badge green";
-    if (status === "OCCUPIED") return "badge blue";
-    return "badge red";
+  const handleUpdateCage = async (event) => {
+    event.preventDefault();
+
+    if (!editingCage) return;
+
+    const cageId = getCageId(editingCage);
+    const nextName = editForm.name.trim();
+    const nextCageNumber = editForm.cageNumber.trim();
+    const nextDeviceId = editForm.raspberryPiDeviceId.trim();
+
+    if (!nextName) {
+      setEditErrorMessage("케이지명을 입력해주세요.");
+      return;
+    }
+
+    if (!cageId) {
+      setEditErrorMessage("케이지 ID를 확인할 수 없습니다.");
+      return;
+    }
+
+    setIsUpdating(true);
+    setEditErrorMessage("");
+
+    try {
+      await updateFacilityCage(DEFAULT_FACILITY_ID, cageId, {
+        name: nextName,
+        cageNumber: nextCageNumber,
+        raspberryPiDeviceId: nextDeviceId,
+      });
+      await loadCages();
+      setIsEditOpen(false);
+      setEditingCage(null);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        setEditErrorMessage("등록되지 않은 Raspberry Pi 장비입니다.");
+        return;
+      }
+
+      if (error.response?.status === 403) {
+        setEditErrorMessage("해당 케이지를 수정할 권한이 없습니다.");
+        return;
+      }
+
+      setEditErrorMessage("케이지 정보를 수정하지 못했습니다.");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -114,8 +212,8 @@ function FacilityCagesPage() {
           <span className="eyebrow">Cage Management</span>
           <h1>케이지 관리</h1>
           <p>
-            시설별 케이지 목록을 조회하고 새 케이지와 라즈베리파이 장치를
-            연결합니다.
+            시설별 케이지 목록을 조회하고 케이지와 라즈베리파이 장비 연결을
+            관리합니다.
           </p>
           <p className="inline-help">현재 테스트 시설 ID: {DEFAULT_FACILITY_ID}</p>
         </div>
@@ -163,7 +261,7 @@ function FacilityCagesPage() {
           <div className="section-header">
             <div>
               <h2>새 케이지 등록</h2>
-              <p>status는 AVAILABLE로 등록됩니다.</p>
+              <p>status는 AVAILABLE로 등록합니다.</p>
             </div>
           </div>
 
@@ -173,7 +271,7 @@ function FacilityCagesPage() {
                 <label>케이지명</label>
                 <input
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(event) => setName(event.target.value)}
                   placeholder="예: 시설 테스트 케이지"
                 />
               </div>
@@ -182,7 +280,7 @@ function FacilityCagesPage() {
                 <label>케이지 번호</label>
                 <input
                   value={cageNumber}
-                  onChange={(e) => setCageNumber(e.target.value)}
+                  onChange={(event) => setCageNumber(event.target.value)}
                   placeholder="예: F-1"
                 />
               </div>
@@ -191,7 +289,7 @@ function FacilityCagesPage() {
                 <label>Raspberry Pi deviceId</label>
                 <input
                   value={raspberryPiDeviceId}
-                  onChange={(e) => setRaspberryPiDeviceId(e.target.value)}
+                  onChange={(event) => setRaspberryPiDeviceId(event.target.value)}
                   placeholder={DEFAULT_DEVICE_ID}
                 />
               </div>
@@ -233,7 +331,7 @@ function FacilityCagesPage() {
           </div>
         ) : (
           <div className="facility-table-wrap">
-            <table className="facility-table">
+            <table className="facility-table facility-cage-table">
               <thead>
                 <tr>
                   <th>케이지 ID</th>
@@ -243,24 +341,34 @@ function FacilityCagesPage() {
                   <th>Raspberry Pi</th>
                   <th>영상</th>
                   <th>등록일</th>
+                  <th className="facility-cage-actions-column">관리</th>
                 </tr>
               </thead>
               <tbody>
                 {cages.map((cage) => (
-                  <tr key={cage.id}>
-                    <td>{cage.id}</td>
+                  <tr key={getCageId(cage)}>
+                    <td>{displayValue(getCageId(cage))}</td>
                     <td>
-                      <strong>{cage.name}</strong>
+                      <strong>{displayValue(cage.name)}</strong>
                     </td>
-                    <td>{cage.cageNumber || "-"}</td>
+                    <td>{displayValue(cage.cageNumber)}</td>
                     <td>
                       <span className={getStatusBadge(cage.status)}>
-                        {cage.status}
+                        {displayValue(cage.status)}
                       </span>
                     </td>
-                    <td>{cage.raspberryPiDeviceId || "-"}</td>
+                    <td>{displayValue(cage.raspberryPiDeviceId)}</td>
                     <td>{cage.videoUrl ? "연결됨" : "없음"}</td>
                     <td>{cage.createdAt ? cage.createdAt.slice(0, 10) : "-"}</td>
+                    <td className="facility-cage-actions-cell">
+                      <button
+                        type="button"
+                        className="mini-button edit-cage-button"
+                        onClick={() => openEditModal(cage)}
+                      >
+                        수정
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -268,6 +376,94 @@ function FacilityCagesPage() {
           </div>
         )}
       </section>
+
+      {isEditOpen && editingCage && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal-panel" role="dialog" aria-modal="true">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">Cage</span>
+                <h2>케이지 수정</h2>
+                <p>케이지명, 번호, 연결 Raspberry Pi 장비를 수정합니다.</p>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={closeEditModal}
+                aria-label="닫기"
+                disabled={isUpdating}
+              >
+                x
+              </button>
+            </div>
+
+            {editingCage.status === "OCCUPIED" && (
+              <div className="warning-box">
+                입실 중인 케이지의 장비를 변경하면 견주 영상 연결에 영향을 줄 수 있습니다.
+              </div>
+            )}
+
+            {editErrorMessage && (
+              <div className="form-error">{editErrorMessage}</div>
+            )}
+
+            <form className="clean-form" onSubmit={handleUpdateCage}>
+              <div className="form-field">
+                <label htmlFor="edit-cage-name">케이지명</label>
+                <input
+                  id="edit-cage-name"
+                  name="name"
+                  value={editForm.name}
+                  onChange={handleEditFormChange}
+                  disabled={isUpdating}
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="edit-cage-number">케이지 번호</label>
+                <input
+                  id="edit-cage-number"
+                  name="cageNumber"
+                  value={editForm.cageNumber}
+                  onChange={handleEditFormChange}
+                  disabled={isUpdating}
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="edit-raspberry-pi">Raspberry Pi 장비 ID</label>
+                <input
+                  id="edit-raspberry-pi"
+                  name="raspberryPiDeviceId"
+                  value={editForm.raspberryPiDeviceId}
+                  onChange={handleEditFormChange}
+                  placeholder="비워두면 기존 장비 연결이 유지됩니다."
+                  disabled={isUpdating}
+                />
+                <p className="inline-help">비워두면 기존 장비 연결이 유지됩니다.</p>
+              </div>
+
+              <div className="button-row">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={closeEditModal}
+                  disabled={isUpdating}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "저장 중..." : "저장"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
