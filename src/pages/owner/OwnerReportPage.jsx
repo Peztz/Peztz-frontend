@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
+// 💡 날짜를 'YYYY-MM-DD' 형식의 문자열로 변환하는 헬퍼 함수
+const getTodayString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 function OwnerReportPage() {
   const [petList, setPetList] = useState([]); 
   const [selectedPet, setSelectedPet] = useState(null); 
@@ -9,18 +18,18 @@ function OwnerReportPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 1. SQL 더미 데이터 규격 고정
+  // 1. 실제 팀 프로젝트에서 사용하는 UUID 규격의 시연용 더미 데이터 세팅
   useEffect(() => {
     const officialDummyPets = [
-      { id: 1, name: "초코", cageId: "55555555-5555-5555-5555-555555555555" },
-      { id: 2, name: "쿠키", cageId: "66666666-6666-6666-6666-666666666666" },
-      { id: 3, name: "바닐라", cageId: "77777777-7777-7777-7777-777777777777" }
+      { id: 1, name: "초코", petId: "7bf2b0d2-dd67-4002-929a-d4505f6af890", cageId: "55555555-5555-5555-5555-555555555555" },
+      { id: 2, name: "쿠키", petId: "8cf3c1e3-ee78-5003-a3ab-e5616f7bf901", cageId: "66666666-6666-6666-6666-666666666666" },
+      { id: 3, name: "바닐라", petId: "9df4d2f4-ff89-6004-b4bc-f672708cg012", cageId: "77777777-7777-7777-7777-777777777777" }
     ];
     setPetList(officialDummyPets);
     setSelectedPet(officialDummyPets[0]); 
   }, []);
 
-  // 🚀 2. Vercel 배포 사이트에서 준님의 GCP 원격 AI 엔진(8500 포트) 직격 슛!
+  // 🚀 2. Vercel 배포 사이트 보안을 뚫기 위해 메인 스프링 백엔드(8080)를 경유합니다!
   const handleFetchReport = async () => {
     if (!selectedPet) {
       setError("분석할 반려동물을 먼저 선택해 주세요.");
@@ -32,20 +41,25 @@ function OwnerReportPage() {
     setReport(""); 
 
     try {
-      // 🎯 핵심 수정: localhost를 지우고, 준님의 진짜 구글 클라우드(GCP) 원격 서버 IP로 정조준합니다!
-      const response = await axios.post("http://34.50.7.78:8500/api/report/generate", {
-        cage_id: selectedPet.cageId,
-        pet_name: selectedPet.name
+      const targetDate = getTodayString(); // '2026-06-10' 오늘 날짜 자동 생성
+      
+      // 🎯 8500번 파이썬 직접 타격 금지! (크롬이 Mixed Content로 막음)
+      // 준님이 1단계에서 구동한 GCP 우분투 내부의 스프링 백엔드(8080)로 신호를 쏩니다.
+      const response = await axios.get("http://34.50.7.78:8080/api/reports/daily", {
+        params: {
+          petId: selectedPet.petId,
+          date: targetDate
+        }
       });
 
-      // 준님의 파이썬 백엔드가 리턴해주는 필드 "report" 매핑
-      if (response.data && response.data.status === "success" && response.data.report) {
-        setReport(response.data.report); 
+      // 🎯 스프링 컨트롤러에서 최종 응답해 주는 'summary' 필드 매핑
+      if (response.data && response.data.summary) {
+        setReport(response.data.summary); 
       } else {
-        setError("리포트 응답 형식이 올바르지 않습니다.");
+        setError("리포트 데이터를 정상적으로 불러왔으나 요약 내용(summary)이 비어있습니다.");
       }
     } catch (err) {
-      setError("❌ AI 서버(8500번 포트) 통신 실패! GCP 서버에서 FastAPI(uvicorn)가 정상 작동 중인지 확인하세요.");
+      setError("❌ 메인 백엔드 서버(8080번 포트) 통신 실패! GCP 서버에서 스프링 부트가 구동 중인지 확인하세요.");
       console.error(err);
     } finally {
       setIsLoading(false); 
@@ -60,7 +74,7 @@ function OwnerReportPage() {
       </div>
 
       <div style={styles.petSelectorContainer}>
-        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (GCP AI 엔진 연동 완료)</p>
+        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (정석 아키텍처 연동)</p>
         <div style={styles.radioGroup}>
           {petList.map((pet) => (
             <label key={pet.id} style={{
@@ -76,7 +90,7 @@ function OwnerReportPage() {
                 style={styles.radioInput}
               />
               <strong style={styles.petNameText}>{pet.name}</strong>
-              <span style={styles.cageText}>({pet.cageId.substring(0,8)}... 케이지)</span>
+              <span style={styles.cageText}>({pet.petId.substring(0,8)}... 펫 ID)</span>
             </label>
           ))}
         </div>
