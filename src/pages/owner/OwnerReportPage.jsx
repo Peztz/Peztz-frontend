@@ -20,7 +20,7 @@ function OwnerReportPage() {
     setSelectedPet(officialDummyPets[0]); 
   }, []);
 
-  // 🚀 2. 8080 스프링 배포 안 기다리고 준님의 8500번 FastAPI 직격 슛!
+  // 🚀 2. Vercel 배포 사이트에서 준님의 GCP 원격 AI 엔진(8500 포트) 직격 슛!
   const handleFetchReport = async () => {
     if (!selectedPet) {
       setError("분석할 반려동물을 먼저 선택해 주세요.");
@@ -32,20 +32,20 @@ function OwnerReportPage() {
     setReport(""); 
 
     try {
-      // 🔥 정석 8080 우회 타지 않고, 준님의 진짜 AI 포트인 8500번을 직접 때립니다!
-      const response = await axios.post("http://localhost:8500/api/report/generate", {
+      // 🎯 핵심 수정: localhost를 지우고, 준님의 진짜 구글 클라우드(GCP) 원격 서버 IP로 정조준합니다!
+      const response = await axios.post("http://34.50.7.78:8500/api/report/generate", {
         cage_id: selectedPet.cageId,
         pet_name: selectedPet.name
       });
 
-      // 🎯 준님 파이썬 백엔드가 리턴해주는 필드 "report" 매핑
+      // 준님의 파이썬 백엔드가 리턴해주는 필드 "report" 매핑
       if (response.data && response.data.status === "success" && response.data.report) {
         setReport(response.data.report); 
       } else {
         setError("리포트 응답 형식이 올바르지 않습니다.");
       }
     } catch (err) {
-      setError("❌ AI 서버(8500번 포트) 통신 실패! 준님 맥북에서 8500 포트 터널링 상태나 uvicorn이 켜져 있는지 확인하세요.");
+      setError("❌ AI 서버(8500번 포트) 통신 실패! GCP 서버에서 FastAPI(uvicorn)가 정상 작동 중인지 확인하세요.");
       console.error(err);
     } finally {
       setIsLoading(false); 
@@ -60,7 +60,7 @@ function OwnerReportPage() {
       </div>
 
       <div style={styles.petSelectorContainer}>
-        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (임시 8500 포트 직격 모드)</p>
+        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (GCP AI 엔진 연동 완료)</p>
         <div style={styles.radioGroup}>
           {petList.map((pet) => (
             <label key={pet.id} style={{
