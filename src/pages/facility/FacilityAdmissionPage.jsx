@@ -5,9 +5,37 @@ import {
   createFacilityAdmissionSession,
   endFacilityAdmissionSession,
   getFacilityActiveAdmissions,
+  getFacilityEndedAdmissions,
   getFacilityCages,
   getOwnerPetsByEmail,
 } from "../../api/facility";
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  return value.replace("T", " ").slice(0, 16);
+}
+
+function formatStayDuration(startedAt, endedAt) {
+  if (!startedAt || !endedAt) return "-";
+
+  const diffMs = new Date(endedAt).getTime() - new Date(startedAt).getTime();
+
+  if (!Number.isFinite(diffMs) || diffMs < 0) return "-";
+
+  const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours}시간 ${minutes}분`;
+  }
+
+  if (hours > 0) {
+    return `${hours}시간`;
+  }
+
+  return `${minutes}분`;
+}
 
 function FacilityAdmissionPage() {
   const [cages, setCages] = useState([]);
@@ -17,10 +45,14 @@ function FacilityAdmissionPage() {
   const [selectedCageId, setSelectedCageId] = useState("");
   const [createdSession, setCreatedSession] = useState(null);
   const [activeAdmissions, setActiveAdmissions] = useState([]);
+  const [endedAdmissions, setEndedAdmissions] = useState([]);
+  const [recentEndedSession, setRecentEndedSession] = useState(null);
   const [copyMessage, setCopyMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isCagesLoading, setIsCagesLoading] = useState(true);
   const [isAdmissionsLoading, setIsAdmissionsLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [isHistoryAvailable, setIsHistoryAvailable] = useState(true);
   const [isPetsLoading, setIsPetsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [endingSessionId, setEndingSessionId] = useState(null);
@@ -29,28 +61,52 @@ function FacilityAdmissionPage() {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([getFacilityCages(), getFacilityActiveAdmissions()])
-      .then(([cageData, admissionData]) => {
+    Promise.allSettled([
+      getFacilityCages(),
+      getFacilityActiveAdmissions(),
+      getFacilityEndedAdmissions(),
+    ])
+      .then(([cageResult, activeResult, endedResult]) => {
         if (!isMounted) return;
 
-        setCages(cageData);
-        setActiveAdmissions(admissionData);
-        const firstAvailable = cageData.find((cage) => cage.status === "AVAILABLE");
+        if (cageResult.status === "fulfilled") {
+          setCages(cageResult.value);
+          const firstAvailable = cageResult.value.find(
+            (cage) => cage.status === "AVAILABLE"
+          );
 
-        if (firstAvailable) {
-          setSelectedCageId(firstAvailable.id);
+          if (firstAvailable) {
+            setSelectedCageId(firstAvailable.id);
+          }
+        } else {
+          setErrorMessage(
+            cageResult.reason?.response?.data?.message ||
+              "케이지 목록을 불러오지 못했습니다."
+          );
         }
-      })
-      .catch((error) => {
-        if (!isMounted) return;
-        setErrorMessage(
-          error.response?.data?.message || "케이지 목록을 불러오지 못했습니다."
-        );
+
+        if (activeResult.status === "fulfilled") {
+          setActiveAdmissions(activeResult.value);
+        } else {
+          setErrorMessage(
+            activeResult.reason?.response?.data?.message ||
+              "현재 입실 중 목록을 불러오지 못했습니다."
+          );
+        }
+
+        if (endedResult.status === "fulfilled") {
+          setEndedAdmissions(endedResult.value);
+          setIsHistoryAvailable(true);
+        } else {
+          // TODO: If ENDED history lookup is not enabled on a target backend, keep showing the latest end response only.
+          setIsHistoryAvailable(false);
+        }
       })
       .finally(() => {
         if (isMounted) {
           setIsCagesLoading(false);
           setIsAdmissionsLoading(false);
+          setIsHistoryLoading(false);
         }
       });
 
@@ -100,8 +156,25 @@ function FacilityAdmissionPage() {
     }
   };
 
+  const refreshEndedAdmissions = async () => {
+    try {
+      const data = await getFacilityEndedAdmissions();
+      setEndedAdmissions(data);
+      setIsHistoryAvailable(true);
+    } catch {
+      // TODO: If ENDED history lookup is not enabled on a target backend, keep showing the latest end response only.
+      setIsHistoryAvailable(false);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
   const refreshFacilityState = async () => {
-    await Promise.all([refreshCages(), refreshActiveAdmissions()]);
+    await Promise.all([
+      refreshCages(),
+      refreshActiveAdmissions(),
+      refreshEndedAdmissions(),
+    ]);
   };
 
   const handleFindPets = async (e) => {
@@ -183,8 +256,11 @@ function FacilityAdmissionPage() {
 
     try {
       const endedSession = await endFacilityAdmissionSession(session.sessionId);
+      setRecentEndedSession(endedSession);
       setSuccessMessage(
-        `sessionId ${endedSession.sessionId} 퇴실 처리가 완료되었습니다.`
+        `sessionId ${endedSession.sessionId} 퇴실 처리가 완료되었습니다. 퇴실 시간: ${formatDateTime(
+          endedSession.endedAt
+        )}`
       );
       await refreshFacilityState();
     } catch (error) {
@@ -284,7 +360,7 @@ function FacilityAdmissionPage() {
                     <span>입실 시간</span>
                     <strong>
                       {session.startedAt
-                        ? session.startedAt.replace("T", " ").slice(0, 16)
+                        ? formatDateTime(session.startedAt)
                         : "-"}
                     </strong>
                   </div>
@@ -473,6 +549,112 @@ function FacilityAdmissionPage() {
           </div>
         </section>
       )}
+
+      <section className="facility-card">
+        <div className="section-header">
+          <div>
+            <h2>입실/퇴실 이력</h2>
+            <p>ENDED 상태의 세션 이력과 투숙 시간을 확인합니다.</p>
+          </div>
+          <span className="count-badge">{endedAdmissions.length}건</span>
+        </div>
+
+        {isHistoryLoading ? (
+          <div className="small-empty">입실/퇴실 이력을 불러오는 중입니다.</div>
+        ) : isHistoryAvailable && endedAdmissions.length === 0 ? (
+          <div className="small-empty">종료된 입실 이력이 없습니다.</div>
+        ) : isHistoryAvailable ? (
+          <div className="active-admission-list">
+            {endedAdmissions.map((session) => (
+              <article className="active-admission-card" key={session.sessionId}>
+                <div className="active-admission-main">
+                  <div>
+                    <span className="badge gray">{session.status}</span>
+                    <h3>{session.petName}</h3>
+                    <p>{session.ownerEmail}</p>
+                  </div>
+                </div>
+
+                <div className="admission-result-grid history">
+                  <div>
+                    <span>sessionId</span>
+                    <strong>{session.sessionId}</strong>
+                  </div>
+                  <div>
+                    <span>케이지</span>
+                    <strong>{session.cageName}</strong>
+                  </div>
+                  <div>
+                    <span>케이지 번호</span>
+                    <strong>{session.cageNumber || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>입실 시간</span>
+                    <strong>{formatDateTime(session.startedAt)}</strong>
+                  </div>
+                  <div>
+                    <span>퇴실 시간</span>
+                    <strong>{formatDateTime(session.endedAt)}</strong>
+                  </div>
+                  <div>
+                    <span>투숙 시간</span>
+                    <strong>
+                      {formatStayDuration(session.startedAt, session.endedAt)}
+                    </strong>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : recentEndedSession ? (
+          <div className="active-admission-card">
+            <div className="active-admission-main">
+              <div>
+                <span className="badge gray">{recentEndedSession.status}</span>
+                <h3>{recentEndedSession.petName}</h3>
+                <p>{recentEndedSession.ownerEmail}</p>
+              </div>
+            </div>
+
+            <div className="admission-result-grid history">
+              <div>
+                <span>sessionId</span>
+                <strong>{recentEndedSession.sessionId}</strong>
+              </div>
+              <div>
+                <span>케이지</span>
+                <strong>{recentEndedSession.cageName}</strong>
+              </div>
+              <div>
+                <span>케이지 번호</span>
+                <strong>{recentEndedSession.cageNumber || "-"}</strong>
+              </div>
+              <div>
+                <span>입실 시간</span>
+                <strong>{formatDateTime(recentEndedSession.startedAt)}</strong>
+              </div>
+              <div>
+                <span>퇴실 시간</span>
+                <strong>{formatDateTime(recentEndedSession.endedAt)}</strong>
+              </div>
+              <div>
+                <span>투숙 시간</span>
+                <strong>
+                  {formatStayDuration(
+                    recentEndedSession.startedAt,
+                    recentEndedSession.endedAt
+                  )}
+                </strong>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="small-empty">
+            ENDED 이력 조회를 사용할 수 없습니다. 퇴실 처리 후 최근 퇴실 결과를
+            이 영역에 표시합니다.
+          </div>
+        )}
+      </section>
     </div>
   );
 }

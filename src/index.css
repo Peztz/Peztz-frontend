@@ -1092,6 +1092,10 @@ th {
   grid-template-columns: repeat(5, 1fr);
 }
 
+.admission-result-grid.history {
+  grid-template-columns: repeat(6, 1fr);
+}
+
 .admission-review-grid span,
 .admission-result-grid span {
   display: block;
@@ -1437,7 +1441,8 @@ th {
   .select-card-list,
   .admission-review-grid,
   .admission-result-grid,
-  .admission-result-grid.compact {
+  .admission-result-grid.compact,
+  .admission-result-grid.history {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -1460,7 +1465,8 @@ th {
   .select-card-list,
   .admission-review-grid,
   .admission-result-grid,
-  .admission-result-grid.compact {
+  .admission-result-grid.compact,
+  .admission-result-grid.history {
     grid-template-columns: 1fr;
   }
 

@@ -69,6 +69,21 @@ export async function getFacilityActiveAdmissions(
   }));
 }
 
+export async function getFacilityEndedAdmissions(
+  facilityId = DEFAULT_FACILITY_ID
+) {
+  const { data } = await springApi.get(
+    `/api/facilities/${facilityId}/admission-sessions`,
+    { params: { status: "ENDED" } }
+  );
+
+  return data.map((session) => ({
+    ...session,
+    sessionId: Number(session.sessionId),
+    accessCode: String(session.accessCode),
+  }));
+}
+
 export async function endFacilityAdmissionSession(
   sessionId,
   facilityId = DEFAULT_FACILITY_ID

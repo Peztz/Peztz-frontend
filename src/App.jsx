@@ -60,15 +60,15 @@ function App() {
 
         <Route
           path="/facility"
-          element={protectedPage(<FacilityHomePage />, ["FACILITY", "ADMIN"])}
+          element={protectedPage(<FacilityHomePage />, ["FACILITY"])}
         />
         <Route
           path="/facility/cages"
-          element={protectedPage(<FacilityCagesPage />, ["FACILITY", "ADMIN"])}
+          element={protectedPage(<FacilityCagesPage />, ["FACILITY"])}
         />
         <Route
           path="/facility/admissions"
-          element={protectedPage(<FacilityAdmissionPage />, ["FACILITY", "ADMIN"])}
+          element={protectedPage(<FacilityAdmissionPage />, ["FACILITY"])}
         />
         <Route
           path="/facility/sessions"
@@ -76,11 +76,11 @@ function App() {
         />
         <Route
           path="/facility/devices"
-          element={protectedPage(<FacilityDevicesPage />, ["FACILITY", "ADMIN"])}
+          element={protectedPage(<FacilityDevicesPage />, ["FACILITY"])}
         />
         <Route
           path="/facility/logs"
-          element={protectedPage(<FacilityLogsPage />, ["FACILITY", "ADMIN"])}
+          element={protectedPage(<FacilityLogsPage />, ["FACILITY"])}
         />
 
         <Route path="/admin" element={protectedPage(<AdminDashboardPage />, ["ADMIN"])} />

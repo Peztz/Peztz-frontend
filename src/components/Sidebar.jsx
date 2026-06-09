@@ -17,6 +17,14 @@ function Sidebar() {
         { path: "/facility/admissions", label: "입실 관리" },
     ];
 
+    const adminMenus = [
+        { path: "/admin", label: "관리자 홈" },
+        { path: "/admin/facilities", label: "전체 시설 관리" },
+        { path: "/admin/cages", label: "전체 케이지 관리" },
+        { path: "/admin/devices", label: "전체 장비 관리" },
+        { path: "/admin/users", label: "전체 사용자 관리" },
+    ];
+
     let menus = ownerMenus;
 
     if (role === "FACILITY") {
@@ -24,7 +32,7 @@ function Sidebar() {
     }
 
     if (role === "ADMIN") {
-        menus = facilityMenus;
+        menus = adminMenus;
     }
 
     return (
