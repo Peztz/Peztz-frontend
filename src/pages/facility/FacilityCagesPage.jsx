@@ -27,6 +27,16 @@ function getStatusBadge(status) {
   return "badge red";
 }
 
+function TruncatedValue({ value, fallback = "-" }) {
+  const displayText = displayValue(value, fallback);
+
+  return (
+    <span className="facility-cage-truncate" title={String(displayText)}>
+      {displayText}
+    </span>
+  );
+}
+
 function FacilityCagesPage() {
   const [cages, setCages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -347,9 +357,13 @@ function FacilityCagesPage() {
               <tbody>
                 {cages.map((cage) => (
                   <tr key={getCageId(cage)}>
-                    <td>{displayValue(getCageId(cage))}</td>
                     <td>
-                      <strong>{displayValue(cage.name)}</strong>
+                      <TruncatedValue value={getCageId(cage)} />
+                    </td>
+                    <td>
+                      <strong>
+                        <TruncatedValue value={cage.name} />
+                      </strong>
                     </td>
                     <td>{displayValue(cage.cageNumber)}</td>
                     <td>
@@ -357,9 +371,15 @@ function FacilityCagesPage() {
                         {displayValue(cage.status)}
                       </span>
                     </td>
-                    <td>{displayValue(cage.raspberryPiDeviceId)}</td>
-                    <td>{cage.videoUrl ? "연결됨" : "없음"}</td>
-                    <td>{cage.createdAt ? cage.createdAt.slice(0, 10) : "-"}</td>
+                    <td>
+                      <TruncatedValue value={cage.raspberryPiDeviceId} />
+                    </td>
+                    <td className="facility-cage-video-cell">
+                      {cage.videoUrl ? "연결됨" : "없음"}
+                    </td>
+                    <td className="facility-cage-date-cell">
+                      {cage.createdAt ? cage.createdAt.slice(0, 10) : "-"}
+                    </td>
                     <td className="facility-cage-actions-cell">
                       <button
                         type="button"

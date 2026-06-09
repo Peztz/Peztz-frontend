@@ -1190,6 +1190,7 @@ th {
 
 .facility-table-wrap {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -1220,17 +1221,59 @@ th {
 }
 
 .facility-cage-table {
-  min-width: 980px;
+  min-width: 1200px;
+  table-layout: fixed;
+}
+
+.facility-cage-table th:first-child,
+.facility-cage-table td:first-child {
+  width: 170px;
+}
+
+.facility-cage-table th:nth-child(2),
+.facility-cage-table td:nth-child(2) {
+  width: 190px;
+}
+
+.facility-cage-table th:nth-child(4),
+.facility-cage-table td:nth-child(4) {
+  width: 120px;
+}
+
+.facility-cage-table th:nth-child(5),
+.facility-cage-table td:nth-child(5) {
+  width: 210px;
+}
+
+.facility-cage-video-cell,
+.facility-cage-table th:nth-child(6) {
+  width: 110px;
+  white-space: nowrap;
+}
+
+.facility-cage-date-cell,
+.facility-cage-table th:nth-child(7) {
+  width: 120px;
+  white-space: nowrap;
 }
 
 .facility-cage-actions-column,
 .facility-cage-actions-cell {
-  width: 110px;
-  min-width: 110px;
+  width: 120px;
+  min-width: 120px;
 }
 
 .edit-cage-button {
-  min-width: 72px;
+  min-width: 74px;
+  white-space: nowrap;
+}
+
+.facility-cage-truncate {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
