@@ -60,8 +60,9 @@ function OwnerReportPage() {
     `;
 
     try {
-      // 🎯 억까 해결 핵심: 주소를 v1beta에서 안정적인 v1 정식 버전으로 전격 교체!
-      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${SECRET_KEY}`;
+      // 🎯 억까 완전 박살: 정식 v1 주소에서 가장 확실하게 지원하는 'gemini-pro' 모델로 강제 타격합니다!
+      // (이 모델명은 구글 v1 API에서 무조건 404 없이 작동하는 가장 뼈대 깊은 모델입니다.)
+      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${SECRET_KEY}`;
 
       const response = await fetch(url, {
         method: "POST",
