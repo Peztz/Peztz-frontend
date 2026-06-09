@@ -47,24 +47,16 @@ function AdminUsersPage() {
     fetchUsers();
   }, []);
 
-  const handleCreateUser = () => {
-    alert("준비 중입니다.");
-  };
-
-  const handleDeactivateUser = () => {
-    alert("준비 중입니다.");
-  };
-
   return (
     <div className="admin-page">
       <section className="page-head">
         <div>
           <span className="eyebrow">User Management</span>
           <h1>전체 사용자 관리</h1>
-          <p>백엔드 관리자 API에서 조회한 전체 사용자 정보를 표시합니다.</p>
+          <p>관리자 API에서 조회한 전체 사용자 정보를 표시합니다.</p>
         </div>
 
-        <button className="primary-button" onClick={handleCreateUser}>
+        <button className="primary-button" disabled>
           회원 추가
         </button>
       </section>
@@ -131,7 +123,7 @@ function AdminUsersPage() {
                         <span className={getStatusBadge(status)}>{status}</span>
                       </td>
                       <td>
-                        <button className="mini-button" onClick={handleDeactivateUser}>
+                        <button className="mini-button" disabled>
                           비활성화
                         </button>
                       </td>

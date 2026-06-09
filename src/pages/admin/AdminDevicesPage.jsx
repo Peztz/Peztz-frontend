@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { getAdminDevices } from "../../api/admin";
 
+const UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
 function toArray(value) {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.content)) return value.content;
@@ -15,6 +18,73 @@ function displayValue(value, fallback = "-") {
   }
 
   return value;
+}
+
+function displayStatus(status) {
+  if (status === "OCCUPIED") return "입실 중";
+  if (status === "AVAILABLE") return "사용 가능";
+  if (status === "정상") return "정상";
+  return displayValue(status);
+}
+
+function getDeviceId(device) {
+  return device.deviceId ?? device.raspberryPiId ?? device.id;
+}
+
+function getFacilityName(device) {
+  return device.facilityName ?? device.facility?.facilityName ?? device.facility?.name;
+}
+
+function getCageRawName(device) {
+  return device.cageName ?? device.cage?.name;
+}
+
+function getCageNumber(device) {
+  return device.cageNumber ?? device.cage?.cageNumber;
+}
+
+function getCageLabel(device) {
+  const cageNumber = getCageNumber(device);
+
+  if (cageNumber) {
+    return {
+      label: cageNumber,
+      title: String(cageNumber),
+    };
+  }
+
+  const cageName = getCageRawName(device);
+
+  if (!cageName) {
+    return {
+      label: "미지정 케이지",
+      title: "미지정 케이지",
+    };
+  }
+
+  const cageNameText = String(cageName);
+  const uuidMatch = cageNameText.match(UUID_PATTERN);
+
+  if (uuidMatch) {
+    const shortId = uuidMatch[0].slice(0, 8);
+
+    return {
+      label: `케이지 ${shortId}...`,
+      title: cageNameText,
+    };
+  }
+
+  if (cageNameText.length > 24) {
+    return {
+      label: `${cageNameText.slice(0, 20)}...`,
+      title: cageNameText,
+    };
+  }
+
+  return {
+    label: cageNameText,
+    title: cageNameText,
+  };
 }
 
 function getDeviceStatus(device) {
@@ -45,9 +115,22 @@ function getDeviceStatus(device) {
 }
 
 function getStatusBadge(status) {
-  if (status === "정상") return "badge green";
+  if (status === "AVAILABLE" || status === "ACTIVE" || status === "정상") {
+    return "badge green";
+  }
+  if (status === "OCCUPIED" || status === "IN_USE") return "badge blue";
   if (status === "점검 필요") return "badge red";
   return "badge blue";
+}
+
+function TruncatedValue({ value, fallback = "-" }) {
+  const displayText = displayValue(value, fallback);
+
+  return (
+    <strong className="truncate-value" title={String(displayText)}>
+      {displayText}
+    </strong>
+  );
 }
 
 function AdminDevicesPage() {
@@ -73,20 +156,16 @@ function AdminDevicesPage() {
     fetchDevices();
   }, []);
 
-  const handleRegisterDevice = () => {
-    alert("준비 중입니다.");
-  };
-
   return (
     <div className="admin-page">
       <section className="page-head">
         <div>
           <span className="eyebrow">Device Management</span>
           <h1>전체 장비 관리</h1>
-          <p>백엔드 관리자 API에서 조회한 라즈베리파이 장비 정보를 표시합니다.</p>
+          <p>관리자 API에서 조회한 라즈베리파이 장비 정보를 표시합니다.</p>
         </div>
 
-        <button className="primary-button" onClick={handleRegisterDevice}>
+        <button className="primary-button" disabled>
           기기 등록
         </button>
       </section>
@@ -111,46 +190,49 @@ function AdminDevicesPage() {
           <div className="device-grid">
             {devices.map((device, index) => {
               const status = getDeviceStatus(device);
+              const deviceId = getDeviceId(device);
+              const cageLabel = getCageLabel(device);
 
               return (
                 <article
                   className="device-card"
-                  key={device.deviceId ?? device.id ?? `device-${index}`}
+                  key={deviceId ?? `device-${index}`}
                 >
                   <div className="device-card-top">
                     <div>
-                      <h3>
-                        {displayValue(
-                          device.deviceId ?? device.raspberryPiId ?? device.id
-                        )}
+                      <span className="eyebrow">Device</span>
+                      <h3 title={String(displayValue(deviceId))}>
+                        {displayValue(deviceId)}
                       </h3>
-                      <p>
-                        {displayValue(
-                          device.facilityName ?? device.facility?.name,
-                          "시설 미연결"
-                        )}{" "}
-                        / 케이지{" "}
-                        {displayValue(
-                          device.cageNumber ??
-                            device.cageName ??
-                            device.cage?.cageNumber
-                        )}
-                      </p>
                     </div>
 
-                    <span className={getStatusBadge(status)}>{status}</span>
+                    <span className={getStatusBadge(status)}>
+                      {displayStatus(status)}
+                    </span>
                   </div>
 
                   <div className="device-info-list">
                     <div>
+                      <span>장비 ID</span>
+                      <TruncatedValue value={deviceId} />
+                    </div>
+                    <div>
+                      <span>연결 시설</span>
+                      <strong>{displayValue(getFacilityName(device), "시설 미연결")}</strong>
+                    </div>
+                    <div>
+                      <span>연결 케이지</span>
+                      <strong className="truncate-value" title={cageLabel.title}>
+                        {cageLabel.label}
+                      </strong>
+                    </div>
+                    <div>
                       <span>MAC 주소</span>
-                      <strong>{displayValue(device.macAddress)}</strong>
+                      <TruncatedValue value={device.macAddress} />
                     </div>
                     <div>
                       <span>최근 IP</span>
-                      <strong>
-                        {displayValue(device.lastIp ?? device.ipAddress)}
-                      </strong>
+                      <strong>{displayValue(device.lastIp ?? device.ipAddress)}</strong>
                     </div>
                     <div>
                       <span>마지막 통신</span>
@@ -163,14 +245,15 @@ function AdminDevicesPage() {
                         )}
                       </strong>
                     </div>
+                    <div>
+                      <span>상태</span>
+                      <strong>{displayStatus(status)}</strong>
+                    </div>
                   </div>
 
-                  <button
-                    className="mini-button full"
-                    onClick={handleRegisterDevice}
-                  >
-                    연결 정보 수정
-                  </button>
+                  <p className="device-assignment-note">
+                    연결 정보는 케이지 관리에서 수정할 수 있습니다.
+                  </p>
                 </article>
               );
             })}

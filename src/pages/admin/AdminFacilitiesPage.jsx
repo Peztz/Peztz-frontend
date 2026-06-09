@@ -40,20 +40,16 @@ function AdminFacilitiesPage() {
     fetchFacilities();
   }, []);
 
-  const handleCreateFacility = () => {
-    alert("준비 중입니다.");
-  };
-
   return (
     <div className="admin-page">
       <section className="page-head">
         <div>
           <span className="eyebrow">Facility Management</span>
           <h1>전체 시설 관리</h1>
-          <p>백엔드 관리자 API에서 조회한 전체 시설 정보를 표시합니다.</p>
+          <p>관리자 API에서 조회한 전체 시설 정보를 표시합니다.</p>
         </div>
 
-        <button className="primary-button" onClick={handleCreateFacility}>
+        <button className="primary-button" disabled>
           시설 추가
         </button>
       </section>
@@ -62,7 +58,7 @@ function AdminFacilitiesPage() {
         <div className="section-header">
           <div>
             <h2>시설 목록</h2>
-            <p>시설명, 연락처, 유형, 케이지 수, 상태를 확인합니다.</p>
+            <p>시설명, 연락처, 유형, 케이지 수와 상태를 확인합니다.</p>
           </div>
           <span className="count-badge">{facilities.length}개</span>
         </div>
@@ -107,9 +103,7 @@ function AdminFacilitiesPage() {
                     <td>{displayValue(facility.type)}</td>
                     <td>
                       {displayValue(
-                        facility.totalCages ??
-                          facility.cageCount ??
-                          facility.cages,
+                        facility.totalCages ?? facility.cageCount ?? facility.cages,
                         0
                       )}
                     </td>

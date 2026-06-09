@@ -15,6 +15,14 @@ export async function getAdminCages() {
   return data;
 }
 
+export async function updateAdminCageAssignment(cageId, payload) {
+  const { data } = await springApi.patch(
+    `/api/admin/cages/${cageId}/assignment`,
+    payload
+  );
+  return data;
+}
+
 export async function getAdminDevices() {
   const { data } = await springApi.get("/api/admin/devices");
   return data;
