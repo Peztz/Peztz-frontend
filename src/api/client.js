@@ -5,7 +5,9 @@ export const USER_KEY = "peztz_user";
 export const ROLE_KEY = "peztz_role";
 
 export const springApi = axios.create({
-  baseURL: import.meta.env.VITE_SPRING_API_BASE_URL,
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_SPRING_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -64,7 +66,9 @@ export function clearAuth() {
 }
 
 export function buildVideoUrl({ deviceId, videoUrl } = {}) {
-  const videoBaseUrl = import.meta.env.VITE_VIDEO_API_BASE_URL;
+  const videoBaseUrl =
+    import.meta.env.VITE_VIDEO_BASE_URL ||
+    import.meta.env.VITE_VIDEO_API_BASE_URL;
   const sourceUrl = videoUrl || "";
   const match = sourceUrl.match(/\/video\/([^/?#]+)/);
 
