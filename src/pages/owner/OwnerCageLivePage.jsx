@@ -18,7 +18,10 @@ function OwnerCageLivePage() {
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [videoFailed, setVideoFailed] = useState(false);
+  const [videoStreamState, setVideoStreamState] = useState({
+    url: "",
+    status: "checking",
+  });
 
   const cage = useMemo(() => {
     if (location.state?.cage) {
@@ -68,6 +71,30 @@ function OwnerCageLivePage() {
     deviceId: cage.raspberryPiDeviceId || cage.deviceId,
     videoUrl: cage.videoUrl,
   });
+  const videoStreamStatus = !videoUrl
+    ? "offline"
+    : videoStreamState.url === videoUrl
+      ? videoStreamState.status
+      : "checking";
+  const videoStatusBadgeClass =
+    videoStreamStatus === "online"
+      ? "badge green"
+      : videoStreamStatus === "checking"
+        ? "badge gray"
+        : "badge red";
+  const videoStatusLabel =
+    videoStreamStatus === "online"
+      ? "ONLINE"
+      : videoStreamStatus === "checking"
+        ? "확인 중"
+        : "OFFLINE";
+  const videoUrlStatusLabel = !videoUrl
+    ? "없음"
+    : videoStreamStatus === "online"
+      ? "연결됨"
+      : videoStreamStatus === "checking"
+        ? "확인 중"
+        : "연결 실패";
   // TODO: Ask backend to include petBreed, birthDate, and medicalNote/memo in OwnerCageResponse.
   const petBreed = cage.petBreed || cage.breed || cage.pet?.breed || "";
   const petBirthDate = cage.birthDate || cage.petBirthDate || cage.pet?.birthDate || "";
@@ -151,11 +178,7 @@ function OwnerCageLivePage() {
 
         <div className="live-status-box">
           <span className="badge blue">입실 중</span>
-          <span
-            className={cage.deviceStatus === "ONLINE" ? "badge green" : "badge gray"}
-          >
-            {cage.deviceStatus || "UNKNOWN"}
-          </span>
+          <span className={videoStatusBadgeClass}>{videoStatusLabel}</span>
         </div>
       </section>
 
@@ -164,12 +187,23 @@ function OwnerCageLivePage() {
       <section className="live-main-grid">
         <div className="live-video-card">
           <div className="live-video-placeholder">
-            {videoUrl && !videoFailed ? (
+            {videoUrl && videoStreamStatus !== "offline" ? (
               <img
                 className="live-video-stream"
                 src={videoUrl}
                 alt="실시간 케이지 영상"
-                onError={() => setVideoFailed(true)}
+                onLoad={() =>
+                  setVideoStreamState({
+                    url: videoUrl,
+                    status: "online",
+                  })
+                }
+                onError={() =>
+                  setVideoStreamState({
+                    url: videoUrl,
+                    status: "offline",
+                  })
+                }
               />
             ) : (
               <div className="video-empty-message">
@@ -219,7 +253,7 @@ function OwnerCageLivePage() {
             </div>
             <div>
               <span>영상 URL</span>
-              <strong>{videoUrl ? "연결됨" : "없음"}</strong>
+              <strong>{videoUrlStatusLabel}</strong>
             </div>
           </div>
         </aside>
