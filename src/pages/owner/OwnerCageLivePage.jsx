@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { buildVideoUrl } from "../../api/client";
 import { getSessionDailyReport, getSessionLogs } from "../../api/owner";
+import { formatPetAge } from "../../utils/petAge";
 
 function OwnerCageLivePage() {
   const { cageId } = useParams();
@@ -67,6 +68,17 @@ function OwnerCageLivePage() {
     deviceId: cage.raspberryPiDeviceId || cage.deviceId,
     videoUrl: cage.videoUrl,
   });
+  // TODO: Ask backend to include petBreed, birthDate, and medicalNote/memo in OwnerCageResponse.
+  const petBreed = cage.petBreed || cage.breed || cage.pet?.breed || "";
+  const petBirthDate = cage.birthDate || cage.petBirthDate || cage.pet?.birthDate || "";
+  const petMemo =
+    cage.medicalNote ||
+    cage.memo ||
+    cage.petMedicalNote ||
+    cage.petMemo ||
+    cage.pet?.medicalNote ||
+    cage.pet?.memo ||
+    "";
 
   useEffect(() => {
     const loadLogsAndReport = async () => {
@@ -133,7 +145,7 @@ function OwnerCageLivePage() {
           <span className="eyebrow">Live Monitoring</span>
           <h1>{cage.petName}의 실시간 케이지 상태</h1>
           <p>
-            {cage.facilityName} / {cage.cageName} · {cage.petBreed || "품종 정보 없음"}
+            {cage.facilityName} / {cage.cageName} · {petBreed || "품종 정보 없음"}
           </p>
         </div>
 
@@ -184,6 +196,18 @@ function OwnerCageLivePage() {
             <div>
               <span>반려동물</span>
               <strong>{cage.petName}</strong>
+            </div>
+            <div>
+              <span>품종</span>
+              <strong>{petBreed || "품종 정보 없음"}</strong>
+            </div>
+            <div>
+              <span>나이</span>
+              <strong>{formatPetAge(petBirthDate)}</strong>
+            </div>
+            <div>
+              <span>주의사항</span>
+              <strong>{petMemo || "등록된 주의사항 없음"}</strong>
             </div>
             <div>
               <span>시설</span>
