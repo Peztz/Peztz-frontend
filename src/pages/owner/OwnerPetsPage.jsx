@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { createPet, deletePet, getMyPets } from "../../api/pets";
+import { formatPetAge } from "../../utils/petAge";
 
 function OwnerPetsPage() {
   const [pets, setPets] = useState([]);
@@ -261,6 +262,7 @@ function OwnerPetsPage() {
                   </div>
 
                   <p className="pet-meta">품종/견종: {pet.breed || "정보 없음"}</p>
+                  <p className="pet-meta">나이: {formatPetAge(pet.birthDate)}</p>
                   <p className="pet-note">
                     {pet.memo || pet.medicalNote || "등록된 주의사항이 없습니다."}
                   </p>

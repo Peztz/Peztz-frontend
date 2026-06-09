@@ -9,6 +9,7 @@ import {
   getFacilityCages,
   getOwnerPetsByEmail,
 } from "../../api/facility";
+import { formatPetAge } from "../../utils/petAge";
 
 function formatDateTime(value) {
   if (!value) return "-";
@@ -35,6 +36,10 @@ function formatStayDuration(startedAt, endedAt) {
   }
 
   return `${minutes}분`;
+}
+
+function getPetNote(pet) {
+  return pet.memo || pet.medicalNote || pet.note || pet.specialNote || "특이사항 없음";
 }
 
 function FacilityAdmissionPage() {
@@ -417,7 +422,10 @@ function FacilityAdmissionPage() {
                     onClick={() => setSelectedPetId(pet.petId)}
                   >
                     <strong>{pet.petName}</strong>
-                    <span>{pet.breed || "품종 정보 없음"}</span>
+                    <span>
+                      {pet.breed || "품종 정보 없음"} / {formatPetAge(pet.birthDate)}
+                    </span>
+                    <span>{getPetNote(pet)}</span>
                     <small>{pet.ownerEmail}</small>
                   </button>
                 ))}
