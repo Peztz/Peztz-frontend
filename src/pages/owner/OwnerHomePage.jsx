@@ -5,10 +5,37 @@ import { buildVideoUrl } from "../../api/client";
 import { getMyCages } from "../../api/owner";
 import { getMyPets } from "../../api/pets";
 
+function getCageStreamStatus(videoStatuses, cage) {
+  if (!cage.videoUrl) return "offline";
+  const checkedStatus = videoStatuses[cage.id];
+  if (checkedStatus?.url !== cage.videoUrl) return "checking";
+  return checkedStatus.status;
+}
+
+function getStreamBadgeClass(status) {
+  if (status === "online") return "badge green";
+  if (status === "checking") return "badge gray";
+  return "badge red";
+}
+
+function getStreamBadgeLabel(status) {
+  if (status === "online") return "ONLINE";
+  if (status === "checking") return "확인 중";
+  return "OFFLINE";
+}
+
+function getVideoInfoLabel(cage, status) {
+  if (!cage.videoUrl) return "없음";
+  if (status === "online") return "연결됨";
+  if (status === "checking") return "확인 중";
+  return "연결 실패";
+}
+
 function OwnerHomePage() {
   const navigate = useNavigate();
   const [pets, setPets] = useState([]);
   const [cages, setCages] = useState([]);
+  const [videoStatuses, setVideoStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -23,12 +50,14 @@ function OwnerHomePage() {
           ...cage,
           id: String(cage.sessionId || cage.cageId),
           sessionId: Number(cage.sessionId),
-          deviceStatus: cage.videoUrl ? "ONLINE" : "UNKNOWN",
           temperature: "-",
           humidity: "-",
           specialCount: 0,
           reportStatus: "조회 가능",
-          videoUrl: buildVideoUrl({ videoUrl: cage.videoUrl }),
+          videoUrl: buildVideoUrl({
+            deviceId: cage.raspberryPiDeviceId || cage.deviceId,
+            videoUrl: cage.videoUrl,
+          }),
         }));
 
         setPets(petData);
@@ -56,6 +85,54 @@ function OwnerHomePage() {
 
     loadOwnerData();
   }, []);
+
+  useEffect(() => {
+    const imageChecks = [];
+
+    cages.forEach((cage) => {
+      if (!cage.videoUrl) return;
+
+      const image = new Image();
+      const check = {
+        image,
+        cancelled: false,
+      };
+
+      image.onload = () => {
+        if (check.cancelled) return;
+        setVideoStatuses((prev) => ({
+          ...prev,
+          [cage.id]: {
+            url: cage.videoUrl,
+            status: "online",
+          },
+        }));
+      };
+
+      image.onerror = () => {
+        if (check.cancelled) return;
+        setVideoStatuses((prev) => ({
+          ...prev,
+          [cage.id]: {
+            url: cage.videoUrl,
+            status: "offline",
+          },
+        }));
+      };
+
+      image.src = cage.videoUrl;
+      imageChecks.push(check);
+    });
+
+    return () => {
+      imageChecks.forEach((check) => {
+        check.cancelled = true;
+        check.image.onload = null;
+        check.image.onerror = null;
+        check.image.src = "";
+      });
+    };
+  }, [cages]);
 
   const openLivePage = (cage) => {
     navigate(`/owner/cages/${cage.id}/live`, { state: { cage } });
@@ -117,60 +194,60 @@ function OwnerHomePage() {
           </div>
         ) : (
           <div className="registered-cage-grid">
-            {cages.map((cage) => (
-              <article
-                className="registered-cage-card"
-                key={cage.id}
-                onClick={() => openLivePage(cage)}
-              >
-                <div className="registered-cage-top">
-                  <div>
-                    <span className="badge blue">
-                      {cage.status === "OCCUPIED" || cage.status === "ACTIVE"
-                        ? "입실 중"
-                        : cage.status}
+            {cages.map((cage) => {
+              const streamStatus = getCageStreamStatus(videoStatuses, cage);
+
+              return (
+                <article
+                  className="registered-cage-card"
+                  key={cage.id}
+                  onClick={() => openLivePage(cage)}
+                >
+                  <div className="registered-cage-top">
+                    <div>
+                      <span className="badge blue">
+                        {cage.status === "OCCUPIED" || cage.status === "ACTIVE"
+                          ? "입실 중"
+                          : cage.status}
+                      </span>
+                    </div>
+                    <span className={getStreamBadgeClass(streamStatus)}>
+                      {getStreamBadgeLabel(streamStatus)}
                     </span>
                   </div>
-                  <span
-                    className={
-                      cage.deviceStatus === "ONLINE" ? "badge green" : "badge gray"
-                    }
-                  >
-                    {cage.deviceStatus}
-                  </span>
-                </div>
 
-                <div className="registered-cage-body">
-                  <h3>{cage.petName}</h3>
-                  <p>{cage.facilityName || "시설 정보 없음"}</p>
+                  <div className="registered-cage-body">
+                    <h3>{cage.petName}</h3>
+                    <p>{cage.facilityName || "시설 정보 없음"}</p>
 
-                  <div className="registered-cage-info">
-                    <div>
-                      <span>시설</span>
-                      <strong>{cage.facilityName || "-"}</strong>
-                    </div>
-                    <div>
-                      <span>케이지</span>
-                      <strong>{cage.cageName || "-"}</strong>
-                    </div>
-                    <div>
-                      <span>영상</span>
-                      <strong>{cage.videoUrl ? "연결됨" : "없음"}</strong>
+                    <div className="registered-cage-info">
+                      <div>
+                        <span>시설</span>
+                        <strong>{cage.facilityName || "-"}</strong>
+                      </div>
+                      <div>
+                        <span>케이지</span>
+                        <strong>{cage.cageName || "-"}</strong>
+                      </div>
+                      <div>
+                        <span>영상</span>
+                        <strong>{getVideoInfoLabel(cage, streamStatus)}</strong>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <button
-                  className="primary-button full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openLivePage(cage);
-                  }}
-                >
-                  실시간 상태 보기
-                </button>
-              </article>
-            ))}
+                  <button
+                    className="primary-button full"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openLivePage(cage);
+                    }}
+                  >
+                    실시간 상태 보기
+                  </button>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
