@@ -163,6 +163,8 @@ function OwnerCageLivePage() {
               <div className="video-empty-message">
                 <div className="live-dot"></div>
                 <h2>실시간 스트리밍을 표시할 수 없습니다</h2>
+                <p>배포 환경에서는 영상 스트리밍이 제한될 수 있습니다.</p>
+                <p>최종 시연은 로컬 환경에서 진행합니다.</p>
                 <p>라즈베리파이가 꺼져 있을 수 있습니다.</p>
                 <p>camera_stream.py가 실행 중인지 확인해주세요.</p>
                 <p>Tailscale IP가 서버에 등록되어 있는지 확인해주세요.</p>
