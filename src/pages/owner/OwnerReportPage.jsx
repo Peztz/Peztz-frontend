@@ -3,17 +3,17 @@ import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
 function OwnerReportPage() {
-  const [petList, setPetList] = useState([]); // 🐶 실제 등록된 반려동물 목록
+  const [petList, setPetList] = useState([]); // 🐶 견주의 진짜 반려동물 목록
   const [selectedPet, setSelectedPet] = useState(null); // 선택된 반려동물
   const [report, setReport] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 1. 화면이 켜지면 스프링 부트(8080)에서 로그인한 유저의 진짜 강아지 목록을 가져옵니다.
+  // 1. 화면이 켜지면 메인 스프링 서버(8080)에서 진짜 강아지 목록을 가져옵니다.
   useEffect(() => {
     const fetchMyPets = async () => {
       try {
-        // ⚠️ 팀원들이 만들어둔 "내 반려동물 목록 조회" 엔드포인트 주소로 확인 필요! (예: /api/pets)
+        // ⚠️ 팀원들이 만들어둔 "내 반려동물 목록 조회" API 주소 (예: /api/pets)
         const response = await axios.get("http://localhost:8080/api/pets"); 
         if (response.data && response.data.length > 0) {
           setPetList(response.data);
@@ -42,14 +42,14 @@ function OwnerReportPage() {
     setReport(""); 
 
     try {
-      // 🔥 팀원이 완성해 둔 스프링 부트(8080)의 리포트 생성 API를 정조준합니다!
+      // 🔥 오직 8080번 메인 스프링 서버의 리포트 생성 API만 정조준합니다!
       const response = await axios.post("http://localhost:8080/api/report/generate", {
-        cage_id: selectedPet.cageId, // 스프링 필드명에 맞게 cage_id 또는 cageId 확인
+        cage_id: selectedPet.cageId, // 팀원들이 정의한 DTO 필드명(cage_id 등)에 맞게 매핑
         pet_name: selectedPet.name
       });
 
-      if (response.data.status === "success" || response.data.report) {
-        // 스프링이 리턴해주는 구조에 맞게 매핑 (예: response.data.report)
+      // 스프링이 성공 응답과 함께 리포트 텍스트를 주면 출력
+      if (response.data && (response.data.report || response.data.status === "success")) {
         setReport(response.data.report); 
       } else {
         setError("리포트 생성에 실패했습니다.");
@@ -69,7 +69,7 @@ function OwnerReportPage() {
         <p style={styles.subtitle}>반려동물의 실시간 Vision AI 행동 로그를 분석한 수의사 소견서입니다.</p>
       </div>
 
-      {/* 🔘 라디오 버튼 선택 영역 (실제 내 강아지들) */}
+      {/* 🔘 라디오 버튼 선택 영역 (실제 내 강아지들 목록) */}
       <div style={styles.petSelectorContainer}>
         <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요</p>
         <div style={styles.radioGroup}>
