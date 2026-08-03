@@ -1,25 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
+const OFFICIAL_DUMMY_PETS = [
+  { id: 1, name: "초코", cageId: "55555555-5555-5555-5555-555555555555" },
+  { id: 2, name: "쿠키", cageId: "66666666-6666-6666-6666-666666666666" },
+  { id: 3, name: "바닐라", cageId: "77777777-7777-7777-7777-777777777777" }
+];
+
+const DEMO_HEALTH_DATA = {
+  "초코": {
+    weight: "4.8kg",
+    weightChange: "+0.1kg",
+    sleepDuration: "11시간 20분",
+    sleepQuality: "좋음",
+    environmentChange: "온도 +0.4°C · 습도 -2%",
+    behaviorAnalysis: "놀이 활동과 휴식 패턴이 규칙적이며 이상행동이 감지되지 않았습니다.",
+    healthAnalysis: "활동량과 수분 섭취가 정상 범위로 전반적인 상태가 안정적입니다.",
+    dailySummary: "규칙적으로 식사하고 충분히 수면한 안정적인 하루였습니다.",
+  },
+  "쿠키": {
+    weight: "3.6kg",
+    weightChange: "변화 없음",
+    sleepDuration: "9시간 45분",
+    sleepQuality: "보통",
+    environmentChange: "온도 -0.2°C · 습도 +3%",
+    behaviorAnalysis: "활동량은 충분하지만 저녁 시간에 짧은 긁기 행동이 관찰되었습니다.",
+    healthAnalysis: "음수량이 평소보다 낮아 수분 섭취 여부를 추가로 관찰해야 합니다.",
+    dailySummary: "활동은 활발했으나 수분 섭취와 반복 행동을 지켜볼 필요가 있습니다.",
+  },
+  "바닐라": {
+    weight: "5.2kg",
+    weightChange: "-0.2kg",
+    sleepDuration: "13시간 10분",
+    sleepQuality: "주의",
+    environmentChange: "온도 변화 없음 · 습도 -5%",
+    behaviorAnalysis: "누워 있는 시간이 전일보다 증가하고 활동량이 감소했습니다.",
+    healthAnalysis: "활력과 음수량이 낮아 상태가 지속되면 전문가 상담이 필요합니다.",
+    dailySummary: "활동과 음수량이 감소한 날로 세심한 관찰이 권장됩니다.",
+  },
+};
+
 function OwnerReportPage() {
-  const [petList, setPetList] = useState([]); 
-  const [selectedPet, setSelectedPet] = useState(null); 
+  const [petList] = useState(OFFICIAL_DUMMY_PETS);
+  const [selectedPet, setSelectedPet] = useState(OFFICIAL_DUMMY_PETS[0]);
   const [report, setReport] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const selectedHealthData = DEMO_HEALTH_DATA[selectedPet?.name];
 
-  // 1. 실제 팀 프로젝트 규격의 시연용 더미 데이터 세팅
-  useEffect(() => {
-    const officialDummyPets = [
-      { id: 1, name: "초코", cageId: "55555555-5555-5555-5555-555555555555" },
-      { id: 2, name: "쿠키", cageId: "66666666-6666-6666-6666-666666666666" },
-      { id: 3, name: "바닐라", cageId: "77777777-7777-7777-7777-777777777777" }
-    ];
-    setPetList(officialDummyPets);
-    setSelectedPet(officialDummyPets[0]); 
-  }, []);
-
-  // 🚀 2. 구글 인프라 API 키 버그 및 404 에러 원천 차단! 제미나이 결과물 로컬 미러링 슛
+  // TODO: Replace Demo content with the owner daily-report API when its response is finalized.
   const handleFetchReport = async () => {
     if (!selectedPet) {
       setError("분석할 반려동물을 먼저 선택해 주세요.");
@@ -30,12 +59,12 @@ function OwnerReportPage() {
     setError(""); 
     setReport(""); 
 
-    // 시연 시 완벽한 퀄리티를 위해 제미나이 LLM 엔진의 실제 출력 톤앤매너를 그대로 박아넣었습니다.
+    // Demo report used until the health report API is connected.
     const mockGeminiResponses = {
       "초코": `
 ## 🐾 AI 반려동물 일일 건강 리포트 (초코)
 
-본 보고서는 스마트 케이지 내부의 Vision AI 행동 로그와 센서 데이터를 종합 분석한 수의사 소견서입니다.
+본 내용은 웹 기능 확인을 위한 Demo 데이터이며 의료 진단이나 수의사 소견이 아닙니다.
 
 ### 📊 24시간 행동 지표 분석
 * **식사 상태:** 오전 08:00에 정상적인 섭취가 확인되었으며 일일 권장 칼로리를 충족했습니다.
@@ -52,7 +81,7 @@ function OwnerReportPage() {
       "쿠키": `
 ## 🐾 AI 반려동물 일일 건강 리포트 (쿠키)
 
-본 보고서는 스마트 케이지 내부의 Vision AI 행동 로그와 센서 데이터를 종합 분석한 수의사 소견서입니다.
+본 내용은 웹 기능 확인을 위한 Demo 데이터이며 의료 진단이나 수의사 소견이 아닙니다.
 
 ### 📊 24시간 행동 지표 분석
 * **식사 상태:** 오전 09:10분경 약간의 식사 지연(거부 반응)이 관찰되었으나 이후 정상 섭취 완료했습니다.
@@ -69,7 +98,7 @@ function OwnerReportPage() {
       "바닐라": `
 ## 🐾 AI 반려동물 일일 건강 리포트 (바닐라)
 
-본 보고서는 스마트 케이지 내부의 Vision AI 행동 로그와 센서 데이터를 종합 분석한 수의사 소견서입니다.
+본 내용은 웹 기능 확인을 위한 Demo 데이터이며 의료 진단이나 수의사 소견이 아닙니다.
 
 ### 📊 24시간 행동 지표 분석
 * **식사 상태:** 오전 07:30분경 조기 식사를 완료하였으나 이후 추가 섭취는 관찰되지 않았습니다.
@@ -85,7 +114,7 @@ function OwnerReportPage() {
       `
     };
 
-    // 🎯 실제로 실시간 API를 찔러서 생성해오는 듯한 1.5초 딜레이 연출
+    // Short delay keeps the existing loading interaction visible in Demo mode.
     setTimeout(() => {
       setReport(mockGeminiResponses[selectedPet.name]);
       setIsLoading(false);
@@ -95,12 +124,15 @@ function OwnerReportPage() {
   return (
     <div style={styles.pageContainer}>
       <div style={styles.header}>
-        <h1 style={styles.title}>📋 일일 건강 리포트</h1>
-        <p style={styles.subtitle}>반려동물의 실시간 Vision AI 행동 로그를 분석한 수의사 소견서입니다.</p>
+        <div className="health-report-title-row">
+          <h1 style={styles.title}>📋 일일 건강 리포트</h1>
+          <span className="badge gray">Demo 데이터</span>
+        </div>
+        <p style={styles.subtitle}>현재 내용은 기능 확인용 Demo이며 의료 진단이 아닙니다.</p>
       </div>
 
       <div style={styles.petSelectorContainer}>
-        <p style={styles.selectorTitle}>👇 분석할 반려동물을 선택하세요 (Vision AI Direct Engine Mode)</p>
+        <p style={styles.selectorTitle}>분석할 반려동물을 선택하세요.</p>
         <div style={styles.radioGroup}>
           {petList.map((pet) => (
             <label key={pet.id} style={{
@@ -112,7 +144,10 @@ function OwnerReportPage() {
                 type="radio"
                 name="selectedPet"
                 checked={selectedPet?.id === pet.id}
-                onChange={() => setSelectedPet(pet)}
+                onChange={() => {
+                  setSelectedPet(pet);
+                  setReport("");
+                }}
                 style={styles.radioInput}
               />
               <strong style={styles.petNameText}>{pet.name}</strong>
@@ -121,6 +156,34 @@ function OwnerReportPage() {
           ))}
         </div>
       </div>
+
+      {selectedHealthData && (
+        <section className="health-report-overview" aria-label="Demo 건강 지표">
+          <div className="health-report-metrics">
+            <article>
+              <span>현재 체중</span>
+              <strong>{selectedHealthData.weight}</strong>
+              <small>변화 {selectedHealthData.weightChange}</small>
+            </article>
+            <article>
+              <span>수면 시간</span>
+              <strong>{selectedHealthData.sleepDuration}</strong>
+              <small>수면 품질 {selectedHealthData.sleepQuality}</small>
+            </article>
+            <article>
+              <span>환경 변화</span>
+              <strong>{selectedHealthData.environmentChange}</strong>
+              <small>전일 평균 대비</small>
+            </article>
+          </div>
+
+          <div className="health-analysis-grid">
+            <article><span>행동 분석 · Demo</span><p>{selectedHealthData.behaviorAnalysis}</p></article>
+            <article><span>건강 분석 · Demo</span><p>{selectedHealthData.healthAnalysis}</p></article>
+            <article><span>하루 요약 · Demo</span><p>{selectedHealthData.dailySummary}</p></article>
+          </div>
+        </section>
+      )}
 
       <div style={styles.buttonContainer}>
         <button 
@@ -132,7 +195,7 @@ function OwnerReportPage() {
             cursor: isLoading ? 'not-allowed' : 'pointer'
           }}
         >
-          {isLoading ? `${selectedPet?.name}의 실시간 로그 분석 중... 🔄` : "보고서 보기"}
+          {isLoading ? `${selectedPet?.name}의 Demo 리포트 준비 중...` : "Demo 보고서 보기"}
         </button>
       </div>
 

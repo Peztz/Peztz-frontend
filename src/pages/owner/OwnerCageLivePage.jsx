@@ -5,6 +5,29 @@ import { buildVideoUrl } from "../../api/client";
 import { getSessionDailyReport, getSessionLogs } from "../../api/owner";
 import { formatPetAge } from "../../utils/petAge";
 
+function formatSensorValue(value, unit) {
+  if (value === undefined || value === null || value === "") return "-";
+  const text = String(value);
+  return text.endsWith(unit) ? text : `${text}${unit}`;
+}
+
+function getDeviceState(value) {
+  if (value === undefined || value === null || value === "") {
+    return { label: "연동 예정", className: "badge gray", isConnected: false };
+  }
+
+  const normalized = String(value).toUpperCase();
+  const isOn = ["ON", "ACTIVE", "RUNNING", "OPEN", "ONLINE", "TRUE"].includes(
+    normalized
+  );
+
+  return {
+    label: isOn ? "작동 중" : "꺼짐",
+    className: isOn ? "badge green" : "badge gray",
+    isConnected: true,
+  };
+}
+
 function OwnerCageLivePage() {
   const { cageId } = useParams();
   const navigate = useNavigate();
@@ -149,6 +172,32 @@ function OwnerCageLivePage() {
     temperature: log.temperature,
     humidity: log.humidity,
   }));
+  const latestSensorLog = [...displayLogs]
+    .reverse()
+    .find((log) => log.temperature != null || log.humidity != null);
+  const currentTemperature =
+    latestSensorLog?.temperature ?? cage.temperature ?? report?.averageTemperature;
+  const currentHumidity =
+    latestSensorLog?.humidity ?? cage.humidity ?? report?.averageHumidity;
+  const recentEvents = displayLogs.slice(-3).reverse();
+  const deviceCards = [
+    { key: "fan", label: "선풍기", state: getDeviceState(cage.fanStatus) },
+    {
+      key: "heating-mat",
+      label: "온열매트",
+      state: getDeviceState(cage.heatingMatStatus),
+    },
+    {
+      key: "feeder",
+      label: "사료 디스펜서",
+      state: getDeviceState(cage.feederStatus),
+    },
+    {
+      key: "raspberry-pi",
+      label: "Raspberry Pi",
+      state: getDeviceState(cage.deviceStatus),
+    },
+  ];
 
   const handleAsk = () => {
     if (!question.trim()) {
@@ -265,8 +314,17 @@ function OwnerCageLivePage() {
           onClick={() => setActiveTab("summary")}
         >
           <span>현재 온도</span>
-          <strong>{cage.temperature || "-"}</strong>
+          <strong>{formatSensorValue(currentTemperature, "°C")}</strong>
           <p>최근 센서 온도</p>
+        </button>
+
+        <button
+          className={activeTab === "summary" ? "live-metric-card active" : "live-metric-card"}
+          onClick={() => setActiveTab("summary")}
+        >
+          <span>현재 습도</span>
+          <strong>{formatSensorValue(currentHumidity, "%")}</strong>
+          <p>최근 센서 습도</p>
         </button>
 
         <button
@@ -286,6 +344,79 @@ function OwnerCageLivePage() {
           <strong>{report ? "조회 완료" : cage.reportStatus || "조회 대기"}</strong>
           <p>세션 기반 리포트</p>
         </button>
+      </section>
+
+      <section className="content-card">
+        <div className="section-header">
+          <div>
+            <h2>장치 상태</h2>
+            <p>현재 응답에 포함된 상태를 우선 표시하며, 제어 API가 없는 기능은 연동 예정입니다.</p>
+          </div>
+          <span className="badge gray">제어 API 연동 예정</span>
+        </div>
+
+        <div className="live-device-grid">
+          {deviceCards.map((device) => (
+            <article className="live-device-status-card" key={device.key}>
+              <div>
+                <span>{device.label}</span>
+                <strong className={device.state.className}>{device.state.label}</strong>
+              </div>
+              <button className="secondary-button" disabled>
+                {device.state.isConnected ? "제어 연동 예정" : "연동 예정"}
+              </button>
+            </article>
+          ))}
+          <article className="live-device-status-card voice-card">
+            <div>
+              <span>보호자 음성 재생</span>
+              <strong className="badge gray">연동 예정</strong>
+            </div>
+            <button className="secondary-button" disabled>
+              음성 재생
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <section className="live-context-grid">
+        <article className="content-card">
+          <div className="section-header compact">
+            <div>
+              <h2>현재 케이지 상태</h2>
+              <p>입실 세션과 센서 상태 기준입니다.</p>
+            </div>
+          </div>
+          <div className="live-cage-status-list">
+            <div><span>입실 상태</span><strong>{cage.status || "확인 필요"}</strong></div>
+            <div><span>영상 스트림</span><strong>{videoStatusLabel}</strong></div>
+            <div><span>현재 온도</span><strong>{formatSensorValue(currentTemperature, "°C")}</strong></div>
+            <div><span>현재 습도</span><strong>{formatSensorValue(currentHumidity, "%")}</strong></div>
+          </div>
+        </article>
+
+        <article className="content-card">
+          <div className="section-header compact">
+            <div>
+              <h2>최근 이벤트</h2>
+              <p>기존 세션 로그에서 최근 항목을 표시합니다.</p>
+            </div>
+          </div>
+          {isLogsLoading ? (
+            <div className="small-empty">최근 이벤트를 불러오는 중입니다.</div>
+          ) : recentEvents.length === 0 ? (
+            <div className="small-empty">조회된 최근 이벤트가 없습니다.</div>
+          ) : (
+            <div className="live-recent-event-list">
+              {recentEvents.map((event) => (
+                <div key={event.id}>
+                  <span className="badge blue">{event.type}</span>
+                  <div><strong>{event.message}</strong><small>{event.time}</small></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
       </section>
 
       {activeTab === "summary" && (

@@ -5,6 +5,26 @@ import { buildVideoUrl } from "../../api/client";
 import { getMyCages } from "../../api/owner";
 import { getMyPets } from "../../api/pets";
 
+const DEMO_TODAY_STATUS = {
+  healthScore: 92,
+  temperature: 24.2,
+  humidity: 48,
+  environmentStatus: "쾌적",
+  lastFeedingTime: "오늘 08:10",
+  fastingDuration: "3시간 20분",
+  recentAbnormalBehavior: "감지된 이상행동 없음",
+};
+
+const DEMO_RECENT_EVENTS = [
+  { id: "demo-event-1", time: "오늘 10:42", type: "활동", detail: "정상적인 놀이 활동이 감지되었습니다." },
+  { id: "demo-event-2", time: "오늘 08:10", type: "급식", detail: "아침 급식이 완료되었습니다." },
+];
+
+const DEMO_TODAY_NOTICES = [
+  { id: "demo-notice-1", title: "환경 상태가 안정적입니다.", detail: "현재 온도와 습도가 권장 범위입니다." },
+  { id: "demo-notice-2", title: "일일 리포트를 확인해 보세요.", detail: "오늘의 행동 분석은 리포트 화면에서 확인할 수 있습니다." },
+];
+
 function getCageStreamStatus(videoStatuses, cage) {
   if (!cage.videoUrl) return "offline";
   const checkedStatus = videoStatuses[cage.id];
@@ -50,10 +70,10 @@ function OwnerHomePage() {
           ...cage,
           id: String(cage.sessionId || cage.cageId),
           sessionId: Number(cage.sessionId),
-          temperature: "-",
-          humidity: "-",
-          specialCount: 0,
-          reportStatus: "조회 가능",
+          temperature: cage.temperature ?? "-",
+          humidity: cage.humidity ?? "-",
+          specialCount: cage.specialCount ?? 0,
+          reportStatus: cage.reportStatus || "조회 가능",
           videoUrl: buildVideoUrl({
             deviceId: cage.raspberryPiDeviceId || cage.deviceId,
             videoUrl: cage.videoUrl,
@@ -138,6 +158,17 @@ function OwnerHomePage() {
     navigate(`/owner/cages/${cage.id}/live`, { state: { cage } });
   };
 
+  const primaryCage = cages[0];
+  const primaryPet = pets[0];
+  const hasTemperature =
+    primaryCage?.temperature !== undefined && primaryCage.temperature !== "-";
+  const hasHumidity =
+    primaryCage?.humidity !== undefined && primaryCage.humidity !== "-";
+  const temperature = hasTemperature
+    ? primaryCage.temperature
+    : DEMO_TODAY_STATUS.temperature;
+  const humidity = hasHumidity ? primaryCage.humidity : DEMO_TODAY_STATUS.humidity;
+
   return (
     <div className="owner-page">
       <section className="owner-hero">
@@ -174,6 +205,114 @@ function OwnerHomePage() {
           <strong>{cages.reduce((sum, cage) => sum + (cage.specialCount || 0), 0)}</strong>
         </div>
       </section>
+
+      <section className="content-card owner-today-section">
+        <div className="section-header">
+          <div>
+            <div className="section-title-row">
+              <h2>오늘의 상태 요약</h2>
+              <span className="badge gray">Demo 데이터</span>
+            </div>
+            <p>
+              {primaryPet?.name || "반려동물"}의 오늘 상태를 한눈에 확인합니다.
+              실제 센서·행동 데이터 API 연동 전에는 Demo 값이 표시됩니다.
+            </p>
+          </div>
+        </div>
+
+        <div className="today-status-grid">
+          <article className="today-status-card health-score-card">
+            <span>건강 점수</span>
+            <strong>{DEMO_TODAY_STATUS.healthScore}<small>/100</small></strong>
+            <p>전반적으로 안정적인 상태입니다.</p>
+            <span className="demo-label">Demo</span>
+          </article>
+          <article className="today-status-card">
+            <span>온도</span>
+            <strong>{temperature}°C</strong>
+            <p>{hasTemperature ? "케이지 센서 기준" : "센서 API 연동 예정"}</p>
+            {!hasTemperature && <span className="demo-label">Demo</span>}
+          </article>
+          <article className="today-status-card">
+            <span>습도</span>
+            <strong>{humidity}%</strong>
+            <p>{hasHumidity ? "케이지 센서 기준" : "센서 API 연동 예정"}</p>
+            {!hasHumidity && <span className="demo-label">Demo</span>}
+          </article>
+          <article className="today-status-card">
+            <span>환경 상태</span>
+            <strong>{DEMO_TODAY_STATUS.environmentStatus}</strong>
+            <p>권장 온·습도 범위입니다.</p>
+            <span className="demo-label">Demo</span>
+          </article>
+        </div>
+
+        <div className="today-detail-grid">
+          <div>
+            <span>최근 급식 시간</span>
+            <strong>{DEMO_TODAY_STATUS.lastFeedingTime}</strong>
+            <small>Demo · 급식 API 연동 예정</small>
+          </div>
+          <div>
+            <span>현재 공복 시간</span>
+            <strong>{DEMO_TODAY_STATUS.fastingDuration}</strong>
+            <small>Demo · 급식 API 연동 예정</small>
+          </div>
+          <div>
+            <span>최근 이상행동</span>
+            <strong>{DEMO_TODAY_STATUS.recentAbnormalBehavior}</strong>
+            <small>Demo · 행동 분석 API 연동 예정</small>
+          </div>
+        </div>
+      </section>
+
+      <div className="owner-home-feed-grid">
+        <section className="content-card">
+          <div className="section-header compact">
+            <div>
+              <div className="section-title-row">
+                <h2>최근 이벤트</h2>
+                <span className="badge gray">Demo</span>
+              </div>
+              <p>이벤트 영상 API 연동 전 예시 내역입니다.</p>
+            </div>
+          </div>
+          <div className="owner-home-list">
+            {DEMO_RECENT_EVENTS.map((event) => (
+              <article key={event.id}>
+                <span className="badge blue">{event.type}</span>
+                <div>
+                  <strong>{event.detail}</strong>
+                  <small>{event.time}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="content-card">
+          <div className="section-header compact">
+            <div>
+              <div className="section-title-row">
+                <h2>오늘의 알림</h2>
+                <span className="badge gray">Demo</span>
+              </div>
+              <p>알림 API 연동 전 예시 안내입니다.</p>
+            </div>
+          </div>
+          <div className="owner-home-list notice-list">
+            {DEMO_TODAY_NOTICES.map((notice) => (
+              <article key={notice.id}>
+                <span className="notice-dot" aria-hidden="true" />
+                <div>
+                  <strong>{notice.title}</strong>
+                  <small>{notice.detail}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
 
       <section className="content-card">
         <div className="section-header">

@@ -3,6 +3,27 @@ import { useEffect, useState } from "react";
 import { createPet, deletePet, getMyPets, updatePet } from "../../api/pets";
 import { formatPetAge } from "../../utils/petAge";
 
+function getPetDetail(pet) {
+  const vaccination = pet.vaccinationStatus || pet.vaccination || pet.vaccinations;
+
+  return {
+    weight: pet.weightKg != null ? `${pet.weightKg}kg` : "연동 예정",
+    vaccination:
+      Array.isArray(vaccination) ? vaccination.join(", ") : vaccination || "연동 예정",
+    recentEvent: pet.recentEvent?.message || pet.latestEvent?.message || "최근 특이사항 없음",
+    hasRecentEvent: Boolean(pet.recentEvent || pet.latestEvent),
+    healthStatus: pet.healthStatus || "양호",
+    hasHealthStatus: Boolean(pet.healthStatus),
+    recentReport:
+      pet.latestReport?.summary || pet.recentReport?.summary || "규칙적인 활동과 휴식이 관찰되었습니다.",
+    hasRecentReport: Boolean(pet.latestReport || pet.recentReport),
+  };
+}
+
+function vaccinationStatusText(value) {
+  return value === "연동 예정" ? "예방접종 API 연동 예정" : "등록 정보";
+}
+
 function OwnerPetsPage() {
   const [pets, setPets] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -10,6 +31,7 @@ function OwnerPetsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedPetId, setSelectedPetId] = useState(null);
 
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
@@ -134,6 +156,7 @@ function OwnerPetsPage() {
       await deletePet(petId);
       const nextPets = pets.filter((pet) => pet.id !== petId);
       setPets(nextPets);
+      if (selectedPetId === petId) setSelectedPetId(null);
       localStorage.setItem("peztz_owner_pets", JSON.stringify(nextPets));
     } catch (error) {
       setErrorMessage(
@@ -387,8 +410,13 @@ function OwnerPetsPage() {
           </div>
         ) : (
           <div className="pet-card-grid">
-            {pets.map((pet) => (
-              <article className="pet-card" key={pet.id}>
+            {pets.map((pet) => {
+              const isDetailOpen = selectedPetId === pet.id;
+              const detail = getPetDetail(pet);
+
+              return (
+              <div className="pet-card-wrapper" key={pet.id}>
+              <article className="pet-card">
                 <div className="pet-avatar">{pet.name?.slice(0, 1) || "P"}</div>
 
                 <div className="pet-card-body">
@@ -407,6 +435,12 @@ function OwnerPetsPage() {
                 <div className="pet-card-actions">
                   <button
                     className="mini-button"
+                    onClick={() => setSelectedPetId(isDetailOpen ? null : pet.id)}
+                  >
+                    {isDetailOpen ? "상세 닫기" : "상세 보기"}
+                  </button>
+                  <button
+                    className="mini-button"
                     onClick={() => openEditForm(pet)}
                   >
                     수정
@@ -419,7 +453,39 @@ function OwnerPetsPage() {
                   </button>
                 </div>
               </article>
-            ))}
+
+              {isDetailOpen && (
+                <section className="pet-detail-panel">
+                  <div className="pet-detail-heading">
+                    <div>
+                      <span className="eyebrow">Pet Detail</span>
+                      <h3>{pet.name} 상세 정보</h3>
+                    </div>
+                    <span className="badge gray">미연동 항목 Demo 표시</span>
+                  </div>
+                  <div className="pet-detail-metric-grid">
+                    <div><span>체중</span><strong>{detail.weight}</strong><small>{pet.weightKg == null ? "체중 API 연동 예정" : "등록 정보"}</small></div>
+                    <div><span>나이</span><strong>{formatPetAge(pet.birthDate)}</strong><small>등록된 생년월일 기준</small></div>
+                    <div><span>예방접종</span><strong>{detail.vaccination}</strong><small>{vaccinationStatusText(detail.vaccination)}</small></div>
+                    <div><span>건강 상태</span><strong>{detail.healthStatus}</strong><small>{detail.hasHealthStatus ? "API 데이터" : "Demo"}</small></div>
+                  </div>
+                  <div className="pet-detail-feed-grid">
+                    <article>
+                      <span>최근 이벤트</span>
+                      <strong>{detail.recentEvent}</strong>
+                      <small>{detail.hasRecentEvent ? "API 데이터" : "Demo · 이벤트 API 연동 예정"}</small>
+                    </article>
+                    <article>
+                      <span>최근 리포트</span>
+                      <strong>{detail.recentReport}</strong>
+                      <small>{detail.hasRecentReport ? "API 데이터" : "Demo · 리포트 API 연동 예정"}</small>
+                    </article>
+                  </div>
+                </section>
+              )}
+              </div>
+              );
+            })}
           </div>
         )}
       </section>

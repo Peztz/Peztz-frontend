@@ -8,6 +8,8 @@ function Sidebar() {
     const ownerMenus = [
         { path: "/owner", label: "홈" },
         { path: "/owner/pets", label: "내 반려동물" },
+        { path: "/owner/health", label: "Health" },
+        { path: "/owner/events", label: "이벤트 다시보기" },
         { path: "/owner/reports", label: "일일 리포트" },
     ];
 

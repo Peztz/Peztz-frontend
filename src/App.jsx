@@ -10,6 +10,8 @@ import OwnerPetsPage from "./pages/owner/OwnerPetsPage";
 import OwnerCageLivePage from "./pages/owner/OwnerCageLivePage";
 import OwnerReportPage from "./pages/owner/OwnerReportPage";
 import OwnerCageRegisterPage from "./pages/owner/OwnerCageRegisterPage";
+import OwnerEventsPage from "./pages/owner/OwnerEventsPage";
+import OwnerHealthAnalysisPage from "./pages/owner/OwnerHealthAnalysisPage";
 
 import FacilityHomePage from "./pages/facility/FacilityHomePage";
 import FacilityCagesPage from "./pages/facility/FacilityCagesPage";
@@ -56,6 +58,14 @@ function App() {
         <Route
           path="/owner/reports"
           element={protectedPage(<OwnerReportPage />, ["OWNER"])}
+        />
+        <Route
+          path="/owner/events"
+          element={protectedPage(<OwnerEventsPage />, ["OWNER"])}
+        />
+        <Route
+          path="/owner/health"
+          element={protectedPage(<OwnerHealthAnalysisPage />, ["OWNER"])}
         />
 
         <Route
