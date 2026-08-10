@@ -2336,8 +2336,15 @@ th {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
+.live-video-card {
+  display: flex;
+  min-width: 0;
+}
+
 .live-video-placeholder {
-  min-height: 430px;
+  width: 100%;
+  min-height: clamp(560px, 62vh, 720px);
+  flex: 1;
   background: #101828;
   border-radius: 18px;
   color: white;
@@ -2353,7 +2360,8 @@ th {
 .live-video-stream {
   width: 100%;
   height: 100%;
-  min-height: 430px;
+  min-height: clamp(560px, 62vh, 720px);
+  flex: 1;
   display: block;
   object-fit: contain;
   background: #101828;
@@ -2691,6 +2699,11 @@ th {
 }
 
 @media (max-width: 700px) {
+  .live-video-placeholder,
+  .live-video-stream {
+    min-height: 360px;
+  }
+
   .owner-log-item {
     grid-template-columns: 1fr;
   }
