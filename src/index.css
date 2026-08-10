@@ -2357,6 +2357,7 @@ th {
   display: block;
   object-fit: contain;
   background: #101828;
+  border: 0;
 }
 
 .video-empty-message {

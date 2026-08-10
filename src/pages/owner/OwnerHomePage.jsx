@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { buildVideoUrl } from "../../api/client";
+import { getMyCamerasWithRuntime } from "../../api/cameras";
+import { buildPlaybackUrl } from "../../api/client";
 import { getMyCages } from "../../api/owner";
 import { getMyPets } from "../../api/pets";
 
@@ -25,11 +26,13 @@ const DEMO_TODAY_NOTICES = [
   { id: "demo-notice-2", title: "일일 리포트를 확인해 보세요.", detail: "오늘의 행동 분석은 리포트 화면에서 확인할 수 있습니다." },
 ];
 
-function getCageStreamStatus(videoStatuses, cage) {
-  if (!cage.videoUrl) return "offline";
-  const checkedStatus = videoStatuses[cage.id];
-  if (checkedStatus?.url !== cage.videoUrl) return "checking";
-  return checkedStatus.status;
+function getCageStreamStatus(cage) {
+  if (!cage.playbackUrl) return "offline";
+
+  const runtimeStatus = String(cage.cameraRuntimeStatus || "").toUpperCase();
+  if (runtimeStatus === "ONLINE") return "online";
+  if (["STARTING", "CHECKING"].includes(runtimeStatus)) return "checking";
+  return "offline";
 }
 
 function getStreamBadgeClass(status) {
@@ -45,7 +48,7 @@ function getStreamBadgeLabel(status) {
 }
 
 function getVideoInfoLabel(cage, status) {
-  if (!cage.videoUrl) return "없음";
+  if (!cage.cameraId) return "미등록";
   if (status === "online") return "연결됨";
   if (status === "checking") return "확인 중";
   return "연결 실패";
@@ -55,7 +58,6 @@ function OwnerHomePage() {
   const navigate = useNavigate();
   const [pets, setPets] = useState([]);
   const [cages, setCages] = useState([]);
-  const [videoStatuses, setVideoStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -65,20 +67,32 @@ function OwnerHomePage() {
       setErrorMessage("");
 
       try {
-        const [petData, cageData] = await Promise.all([getMyPets(), getMyCages()]);
-        const normalizedCages = cageData.map((cage) => ({
-          ...cage,
-          id: String(cage.sessionId || cage.cageId),
-          sessionId: Number(cage.sessionId),
-          temperature: cage.temperature ?? "-",
-          humidity: cage.humidity ?? "-",
-          specialCount: cage.specialCount ?? 0,
-          reportStatus: cage.reportStatus || "조회 가능",
-          videoUrl: buildVideoUrl({
-            deviceId: cage.raspberryPiDeviceId || cage.deviceId,
-            videoUrl: cage.videoUrl,
-          }),
-        }));
+        const [petData, cageData, cameraData] = await Promise.all([
+          getMyPets(),
+          getMyCages(),
+          getMyCamerasWithRuntime().catch(() => []),
+        ]);
+        const cameraByCageId = new Map(
+          cameraData.map((camera) => [String(camera.cageId), camera])
+        );
+        const normalizedCages = cageData.map((cage) => {
+          const camera = cameraByCageId.get(String(cage.cageId));
+
+          return {
+            ...cage,
+            id: String(cage.sessionId || cage.cageId),
+            sessionId: Number(cage.sessionId),
+            temperature: cage.temperature ?? "-",
+            humidity: cage.humidity ?? "-",
+            specialCount: cage.specialCount ?? 0,
+            reportStatus: cage.reportStatus || "조회 가능",
+            cameraId: camera?.cameraId || "",
+            cameraName: camera?.name || "",
+            cameraRuntimeStatus: camera?.runtime?.status || camera?.streamStatus || "OFFLINE",
+            rawPlaybackUrl: camera?.runtime?.playbackUrl || "",
+            playbackUrl: buildPlaybackUrl(camera?.runtime?.playbackUrl),
+          };
+        });
 
         setPets(petData);
         setCages(normalizedCages);
@@ -105,54 +119,6 @@ function OwnerHomePage() {
 
     loadOwnerData();
   }, []);
-
-  useEffect(() => {
-    const imageChecks = [];
-
-    cages.forEach((cage) => {
-      if (!cage.videoUrl) return;
-
-      const image = new Image();
-      const check = {
-        image,
-        cancelled: false,
-      };
-
-      image.onload = () => {
-        if (check.cancelled) return;
-        setVideoStatuses((prev) => ({
-          ...prev,
-          [cage.id]: {
-            url: cage.videoUrl,
-            status: "online",
-          },
-        }));
-      };
-
-      image.onerror = () => {
-        if (check.cancelled) return;
-        setVideoStatuses((prev) => ({
-          ...prev,
-          [cage.id]: {
-            url: cage.videoUrl,
-            status: "offline",
-          },
-        }));
-      };
-
-      image.src = cage.videoUrl;
-      imageChecks.push(check);
-    });
-
-    return () => {
-      imageChecks.forEach((check) => {
-        check.cancelled = true;
-        check.image.onload = null;
-        check.image.onerror = null;
-        check.image.src = "";
-      });
-    };
-  }, [cages]);
 
   const openLivePage = (cage) => {
     navigate(`/owner/cages/${cage.id}/live`, { state: { cage } });
@@ -334,7 +300,7 @@ function OwnerHomePage() {
         ) : (
           <div className="registered-cage-grid">
             {cages.map((cage) => {
-              const streamStatus = getCageStreamStatus(videoStatuses, cage);
+              const streamStatus = getCageStreamStatus(cage);
 
               return (
                 <article

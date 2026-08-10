@@ -11,6 +11,7 @@ const videoBaseUrl =
   import.meta.env.VITE_VIDEO_BASE_URL ||
   import.meta.env.VITE_VIDEO_API_BASE_URL ||
   "";
+const streamBaseUrl = import.meta.env.VITE_STREAM_BASE_URL || "";
 
 export const springApi = axios.create({
   baseURL: apiBaseUrl,
@@ -84,6 +85,26 @@ export function buildVideoUrl({ deviceId, videoUrl } = {}) {
   }
 
   return sourceUrl;
+}
+
+export function buildPlaybackUrl(playbackUrl) {
+  if (!playbackUrl) return "";
+
+  try {
+    const parsedUrl = new URL(playbackUrl, window.location.origin);
+
+    if (streamBaseUrl) {
+      return `${streamBaseUrl.replace(/\/$/, "")}${parsedUrl.pathname}${parsedUrl.search}`;
+    }
+
+    if (window.location.protocol === "https:" && parsedUrl.protocol === "http:") {
+      return `/stream${parsedUrl.pathname}${parsedUrl.search}`;
+    }
+  } catch {
+    return playbackUrl;
+  }
+
+  return playbackUrl;
 }
 
 springApi.interceptors.request.use((config) => {

@@ -36,6 +36,33 @@ export async function updateFacilityCage(
   return data;
 }
 
+export async function getFacilityCameras(facilityId = DEFAULT_FACILITY_ID) {
+  const { data } = await springApi.get(`/api/facilities/${facilityId}/cameras`);
+  return data;
+}
+
+export async function upsertFacilityCamera(
+  cageId,
+  payload,
+  facilityId = DEFAULT_FACILITY_ID
+) {
+  const { data } = await springApi.put(
+    `/api/facilities/${facilityId}/cages/${cageId}/camera`,
+    payload
+  );
+  return data;
+}
+
+export async function getFacilityCameraRuntimeStatus(
+  cameraId,
+  facilityId = DEFAULT_FACILITY_ID
+) {
+  const { data } = await springApi.get(
+    `/api/facilities/${facilityId}/cameras/${cameraId}/runtime-status`
+  );
+  return data;
+}
+
 export async function getOwnerPetsByEmail(
   ownerEmail,
   facilityId = DEFAULT_FACILITY_ID

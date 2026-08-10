@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { buildVideoUrl } from "../../api/client";
-import { verifyAccessCode } from "../../api/owner";
+import { getMyCamerasWithRuntime } from "../../api/cameras";
+import { buildPlaybackUrl } from "../../api/client";
+import { getMyCages, verifyAccessCode } from "../../api/owner";
 import { getMyPets } from "../../api/pets";
 
 function OwnerCageRegisterPage() {
@@ -60,22 +61,38 @@ function OwnerCageRegisterPage() {
         return;
       }
 
+      const [ownedCages, cameras] = await Promise.all([
+        getMyCages(),
+        getMyCamerasWithRuntime().catch(() => []),
+      ]);
+      const ownedCage = ownedCages.find(
+        (item) => String(item.sessionId) === String(result.sessionId)
+      );
+      const camera = cameras.find(
+        (item) => String(item.cageId) === String(ownedCage?.cageId)
+      );
       const cage = {
+        ...ownedCage,
         id: String(result.sessionId),
         sessionId: Number(result.sessionId),
-        petId: selectedPet?.id,
-        petName: result.petName || selectedPet?.name || "반려동물",
-        petBreed: selectedPet?.breed,
-        facilityName: "인증된 시설",
-        cageName: result.cageName,
-        status: "ACTIVE",
-        deviceStatus: result.videoUrl ? "ONLINE" : "UNKNOWN",
+        petId: ownedCage?.petId || selectedPet?.id,
+        petName:
+          ownedCage?.petName || result.petName || selectedPet?.name || "반려동물",
+        petBreed: ownedCage?.petBreed || selectedPet?.breed,
+        facilityName: ownedCage?.facilityName || "인증된 시설",
+        cageName: result.cageName || ownedCage?.cageName,
+        status: ownedCage?.status || "ACTIVE",
+        deviceStatus: camera?.runtime?.status || "UNKNOWN",
         temperature: "-",
         humidity: "-",
         specialCount: 0,
         reportStatus: "조회 가능",
         accessCode: accessCode.trim(),
-        videoUrl: buildVideoUrl({ videoUrl: result.videoUrl }),
+        cameraId: camera?.cameraId || "",
+        cameraName: camera?.name || "",
+        cameraRuntimeStatus: camera?.runtime?.status || camera?.streamStatus || "OFFLINE",
+        rawPlaybackUrl: camera?.runtime?.playbackUrl || "",
+        playbackUrl: buildPlaybackUrl(camera?.runtime?.playbackUrl),
         registeredAt: new Date().toISOString(),
       };
 
@@ -204,7 +221,7 @@ function OwnerCageRegisterPage() {
                 </div>
                 <div>
                   <span>영상</span>
-                  <strong>{verifiedCage.videoUrl ? "연결됨" : "없음"}</strong>
+                  <strong>{verifiedCage.playbackUrl ? "연결됨" : "없음"}</strong>
                 </div>
               </div>
             </div>

@@ -3,7 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_FACILITY_ID,
   createFacilityCage,
+  getFacilityCameraRuntimeStatus,
+  getFacilityCameras,
   getFacilityCages,
+  upsertFacilityCamera,
   updateFacilityCage,
 } from "../../api/facility";
 
@@ -27,6 +30,32 @@ function getStatusBadge(status) {
   return "badge red";
 }
 
+async function getFacilityCageCameraData() {
+  const [cageData, cameraData] = await Promise.all([
+    getFacilityCages(),
+    getFacilityCameras(),
+  ]);
+  const camerasByCage = Object.fromEntries(
+    cameraData.map((camera) => [String(camera.cageId), camera])
+  );
+  const runtimeEntries = await Promise.all(
+    cameraData.map(async (camera) => {
+      try {
+        const runtime = await getFacilityCameraRuntimeStatus(camera.cameraId);
+        return [camera.cameraId, runtime];
+      } catch {
+        return [camera.cameraId, { status: "OFFLINE", playbackUrl: null }];
+      }
+    })
+  );
+
+  return {
+    cageData,
+    camerasByCage,
+    runtimeByCamera: Object.fromEntries(runtimeEntries),
+  };
+}
+
 function TruncatedValue({ value, fallback = "-" }) {
   const displayText = displayValue(value, fallback);
 
@@ -37,8 +66,21 @@ function TruncatedValue({ value, fallback = "-" }) {
   );
 }
 
+function CameraStatus({ camera, runtime }) {
+  if (!camera) return "없음";
+
+  const status = runtime?.status || "REGISTERED";
+  return (
+    <span className={status === "ONLINE" ? "badge green" : "badge gray"}>
+      {status}
+    </span>
+  );
+}
+
 function FacilityCagesPage() {
   const [cages, setCages] = useState([]);
+  const [camerasByCageId, setCamerasByCageId] = useState({});
+  const [cameraRuntimeById, setCameraRuntimeById] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,6 +94,7 @@ function FacilityCagesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editErrorMessage, setEditErrorMessage] = useState("");
+  const [cameraName, setCameraName] = useState("");
   const [editForm, setEditForm] = useState({
     name: "",
     cageNumber: "",
@@ -62,8 +105,10 @@ function FacilityCagesPage() {
     setErrorMessage("");
 
     try {
-      const data = await getFacilityCages();
-      setCages(data);
+      const data = await getFacilityCageCameraData();
+      setCages(data.cageData);
+      setCamerasByCageId(data.camerasByCage);
+      setCameraRuntimeById(data.runtimeByCamera);
     } catch (error) {
       setErrorMessage(
         error.response?.data?.message || "케이지 목록을 불러오지 못했습니다."
@@ -76,9 +121,12 @@ function FacilityCagesPage() {
   useEffect(() => {
     let isMounted = true;
 
-    getFacilityCages()
+    getFacilityCageCameraData()
       .then((data) => {
-        if (isMounted) setCages(data);
+        if (!isMounted) return;
+        setCages(data.cageData);
+        setCamerasByCageId(data.camerasByCage);
+        setCameraRuntimeById(data.runtimeByCamera);
       })
       .catch((error) => {
         if (!isMounted) return;
@@ -116,6 +164,8 @@ function FacilityCagesPage() {
       cageNumber: String(cage.cageNumber ?? ""),
       raspberryPiDeviceId: String(cage.raspberryPiDeviceId ?? ""),
     });
+    const camera = camerasByCageId[String(getCageId(cage))];
+    setCameraName(camera?.name || "");
     setEditErrorMessage("");
     setIsEditOpen(true);
   };
@@ -124,6 +174,7 @@ function FacilityCagesPage() {
     if (isUpdating) return;
     setIsEditOpen(false);
     setEditingCage(null);
+    setCameraName("");
     setEditErrorMessage("");
   };
 
@@ -195,9 +246,13 @@ function FacilityCagesPage() {
         cageNumber: nextCageNumber,
         raspberryPiDeviceId: nextDeviceId,
       });
+      if (cameraName.trim()) {
+        await upsertFacilityCamera(cageId, { name: cameraName.trim() });
+      }
       await loadCages();
       setIsEditOpen(false);
       setEditingCage(null);
+      setCameraName("");
     } catch (error) {
       if (error.response?.status === 404) {
         setEditErrorMessage("등록되지 않은 Raspberry Pi 장비입니다.");
@@ -375,7 +430,14 @@ function FacilityCagesPage() {
                       <TruncatedValue value={cage.raspberryPiDeviceId} />
                     </td>
                     <td className="facility-cage-video-cell">
-                      {cage.videoUrl ? "연결됨" : "없음"}
+                      <CameraStatus
+                        camera={camerasByCageId[String(getCageId(cage))]}
+                        runtime={
+                          cameraRuntimeById[
+                            camerasByCageId[String(getCageId(cage))]?.cameraId
+                          ]
+                        }
+                      />
                     </td>
                     <td className="facility-cage-date-cell">
                       {cage.createdAt ? cage.createdAt.slice(0, 10) : "-"}
@@ -461,6 +523,20 @@ function FacilityCagesPage() {
                   disabled={isUpdating}
                 />
                 <p className="inline-help">비워두면 기존 장비 연결이 유지됩니다.</p>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="edit-camera-name">카메라 이름</label>
+                <input
+                  id="edit-camera-name"
+                  value={cameraName}
+                  onChange={(event) => setCameraName(event.target.value)}
+                  placeholder="예: 시연 카메라"
+                  disabled={isUpdating}
+                />
+                <p className="inline-help">
+                  이름을 입력하면 이 케이지에 카메라가 등록되거나 기존 카메라 이름이 변경됩니다.
+                </p>
               </div>
 
               <div className="button-row">

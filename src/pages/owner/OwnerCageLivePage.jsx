@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-import { buildVideoUrl } from "../../api/client";
+import { buildPlaybackUrl } from "../../api/client";
 import { getSessionDailyReport, getSessionLogs } from "../../api/owner";
 import { formatPetAge } from "../../utils/petAge";
 
@@ -41,10 +41,6 @@ function OwnerCageLivePage() {
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [videoStreamState, setVideoStreamState] = useState({
-    url: "",
-    status: "checking",
-  });
 
   const cage = useMemo(() => {
     if (location.state?.cage) {
@@ -90,15 +86,15 @@ function OwnerCageLivePage() {
 
   const sessionId = Number(cage.sessionId || cage.id);
   const hasNumericSessionId = Number.isFinite(sessionId);
-  const videoUrl = buildVideoUrl({
-    deviceId: cage.raspberryPiDeviceId || cage.deviceId,
-    videoUrl: cage.videoUrl,
-  });
+  const videoUrl = cage.playbackUrl || buildPlaybackUrl(cage.rawPlaybackUrl);
+  const cameraRuntimeStatus = String(cage.cameraRuntimeStatus || "").toUpperCase();
   const videoStreamStatus = !videoUrl
     ? "offline"
-    : videoStreamState.url === videoUrl
-      ? videoStreamState.status
-      : "checking";
+    : cameraRuntimeStatus === "ONLINE"
+      ? "online"
+      : ["STARTING", "CHECKING"].includes(cameraRuntimeStatus)
+        ? "checking"
+        : "offline";
   const videoStatusBadgeClass =
     videoStreamStatus === "online"
       ? "badge green"
@@ -236,33 +232,19 @@ function OwnerCageLivePage() {
       <section className="live-main-grid">
         <div className="live-video-card">
           <div className="live-video-placeholder">
-            {videoUrl && videoStreamStatus !== "offline" ? (
-              <img
+            {videoUrl && videoStreamStatus === "online" ? (
+              <iframe
                 className="live-video-stream"
                 src={videoUrl}
-                alt="실시간 케이지 영상"
-                onLoad={() =>
-                  setVideoStreamState({
-                    url: videoUrl,
-                    status: "online",
-                  })
-                }
-                onError={() =>
-                  setVideoStreamState({
-                    url: videoUrl,
-                    status: "offline",
-                  })
-                }
+                title="실시간 케이지 영상"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
               />
             ) : (
               <div className="video-empty-message">
                 <div className="live-dot"></div>
                 <h2>실시간 스트리밍을 표시할 수 없습니다</h2>
-                <p>배포 환경에서는 영상 스트리밍이 제한될 수 있습니다.</p>
-                <p>최종 시연은 로컬 환경에서 진행합니다.</p>
-                <p>라즈베리파이가 꺼져 있을 수 있습니다.</p>
-                <p>camera_stream.py가 실행 중인지 확인해주세요.</p>
-                <p>Tailscale IP가 서버에 등록되어 있는지 확인해주세요.</p>
+                <p>카메라 송출 프로그램과 MediaMTX 상태를 확인해주세요.</p>
               </div>
             )}
           </div>

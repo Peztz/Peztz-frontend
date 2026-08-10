@@ -5,8 +5,12 @@
       "destination": "http://34.50.7.78:8080/api/:path*"
     },
     {
-      "source": "/video/:path*",
-      "destination": "http://34.50.7.78:8000/video/:path*"
+      "source": "/stream/:path*",
+      "destination": "http://34.50.7.78:8889/:path*"
+    },
+    {
+      "source": "/cage-a1/:path*",
+      "destination": "http://34.50.7.78:8889/cage-a1/:path*"
     },
     {
       "source": "/(.*)",
