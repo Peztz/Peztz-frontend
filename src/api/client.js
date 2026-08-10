@@ -98,7 +98,7 @@ export function buildPlaybackUrl(playbackUrl) {
     }
 
     if (window.location.protocol === "https:" && parsedUrl.protocol === "http:") {
-      return `/stream${parsedUrl.pathname}${parsedUrl.search}`;
+      return "/camera-player.html";
     }
   } catch {
     return playbackUrl;
