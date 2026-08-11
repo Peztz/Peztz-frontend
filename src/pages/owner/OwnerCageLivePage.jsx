@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { buildPlaybackUrl } from "../../api/client";
-import { getSessionDailyReport, getSessionLogs } from "../../api/owner";
+import { getMyCameras, getCameraRuntimeStatus } from "../../api/cameras";
+import { getSessionLogs } from "../../api/owner";
+import { getDailyReport } from "../../api/reports";
+import {
+  getSmartThingsDevices,
+  getSmartThingsDeviceStatus,
+} from "../../api/smartthings";
 import { formatPetAge } from "../../utils/petAge";
 
 function formatSensorValue(value, unit) {
@@ -38,6 +44,9 @@ function OwnerCageLivePage() {
   const [aiAnswer, setAiAnswer] = useState("");
   const [logs, setLogs] = useState([]);
   const [report, setReport] = useState(null);
+  const [camera, setCamera] = useState(null);
+  const [cameraRuntime, setCameraRuntime] = useState(null);
+  const [smartThingsDevices, setSmartThingsDevices] = useState([]);
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -86,8 +95,16 @@ function OwnerCageLivePage() {
 
   const sessionId = Number(cage.sessionId || cage.id);
   const hasNumericSessionId = Number.isFinite(sessionId);
-  const videoUrl = cage.playbackUrl || buildPlaybackUrl(cage.rawPlaybackUrl);
-  const cameraRuntimeStatus = String(cage.cameraRuntimeStatus || "").toUpperCase();
+  const videoUrl =
+    cameraRuntime?.playbackUrl ||
+    cage.playbackUrl ||
+    buildPlaybackUrl(cage.rawPlaybackUrl);
+  const cameraRuntimeStatus = String(
+    cameraRuntime?.status ||
+      cameraRuntime?.streamStatus ||
+      cage.cameraRuntimeStatus ||
+      ""
+  ).toUpperCase();
   const videoStreamStatus = !videoUrl
     ? "offline"
     : cameraRuntimeStatus === "ONLINE"
@@ -147,7 +164,7 @@ function OwnerCageLivePage() {
 
       try {
         const today = new Date().toISOString().slice(0, 10);
-        const reportData = await getSessionDailyReport(sessionId, today);
+        const reportData = await getDailyReport(cage.petId, today);
         setReport(reportData);
       } catch {
         setReport(null);
@@ -157,7 +174,56 @@ function OwnerCageLivePage() {
     };
 
     loadLogsAndReport();
-  }, [hasNumericSessionId, sessionId]);
+  }, [cage.petId, hasNumericSessionId, sessionId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadConnectedDevices = async () => {
+      const [cameraResult, smartThingsResult] = await Promise.allSettled([
+        getMyCameras(),
+        getSmartThingsDevices(),
+      ]);
+
+      if (cancelled) return;
+
+      if (cameraResult.status === "fulfilled") {
+        const matchedCamera =
+          cameraResult.value.find((item) => String(item.cageId) === String(cage.cageId)) ||
+          cameraResult.value[0] ||
+          null;
+        setCamera(matchedCamera);
+
+        if (matchedCamera) {
+          try {
+            const runtime = await getCameraRuntimeStatus(matchedCamera.cameraId);
+            if (!cancelled) setCameraRuntime(runtime);
+          } catch {
+            if (!cancelled) setCameraRuntime(null);
+          }
+        }
+      }
+
+      if (smartThingsResult.status === "fulfilled") {
+        const devicesWithStatus = await Promise.all(
+          smartThingsResult.value.map(async (device) => {
+            try {
+              const status = await getSmartThingsDeviceStatus(device.deviceId);
+              return { ...device, runtimeStatus: status };
+            } catch {
+              return { ...device, runtimeStatus: null };
+            }
+          })
+        );
+        if (!cancelled) setSmartThingsDevices(devicesWithStatus);
+      }
+    };
+
+    loadConnectedDevices();
+    return () => {
+      cancelled = true;
+    };
+  }, [cage.cageId]);
 
   const displayLogs = logs.map((log) => ({
     id: log.id,
@@ -194,6 +260,16 @@ function OwnerCageLivePage() {
       state: getDeviceState(cage.deviceStatus),
     },
   ];
+  const connectedDeviceCards = smartThingsDevices.map((device) => ({
+    key: device.deviceId,
+    label: device.displayName,
+    state: {
+      label: device.runtimeStatus ? "상태 조회 완료" : "상태 조회 실패",
+      className: device.runtimeStatus ? "badge green" : "badge red",
+      isConnected: Boolean(device.runtimeStatus),
+    },
+  }));
+  const visibleDeviceCards = connectedDeviceCards.length > 0 ? connectedDeviceCards : deviceCards;
 
   const handleAsk = () => {
     if (!question.trim()) {
@@ -338,7 +414,7 @@ function OwnerCageLivePage() {
         </div>
 
         <div className="live-device-grid">
-          {deviceCards.map((device) => (
+          {visibleDeviceCards.map((device) => (
             <article className="live-device-status-card" key={device.key}>
               <div>
                 <span>{device.label}</span>
@@ -349,6 +425,19 @@ function OwnerCageLivePage() {
               </button>
             </article>
           ))}
+          {camera && (
+            <article className="live-device-status-card">
+              <div>
+                <span>{camera.name}</span>
+                <strong className={cameraRuntime ? "badge green" : "badge gray"}>
+                  {cameraRuntime?.streamStatus || camera.streamStatus}
+                </strong>
+              </div>
+              <button className="secondary-button" disabled>
+                {cameraRuntime?.message || camera.status}
+              </button>
+            </article>
+          )}
           <article className="live-device-status-card voice-card">
             <div>
               <span>보호자 음성 재생</span>

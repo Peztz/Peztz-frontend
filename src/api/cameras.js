@@ -1,15 +1,39 @@
-import { springApi } from "./client";
+import { buildPlaybackUrl, springApi } from "./client";
+
+export function normalizeCamera(camera = {}) {
+  return {
+    ...camera,
+    id: camera.cameraId ?? camera.id,
+    cameraId: camera.cameraId ?? camera.id,
+    name: camera.name || camera.cameraName || "카메라",
+    status: camera.status || "UNKNOWN",
+    streamStatus: camera.streamStatus || "UNKNOWN",
+  };
+}
+
+export function normalizeCameraRuntimeStatus(status = {}) {
+  return {
+    ...status,
+    cameraId: status.cameraId,
+    status: status.status || "UNKNOWN",
+    streamStatus: status.streamStatus || status.status || "UNKNOWN",
+    playbackUrl: buildPlaybackUrl(status.playbackUrl),
+    message: status.message || "",
+  };
+}
 
 export async function getMyCameras() {
   const { data } = await springApi.get("/api/cameras/my");
-  return data;
+
+  return (Array.isArray(data) ? data : []).map(normalizeCamera);
 }
 
 export async function getCameraRuntimeStatus(cameraId) {
   const { data } = await springApi.get(
     `/api/cameras/${cameraId}/runtime-status`
   );
-  return data;
+
+  return normalizeCameraRuntimeStatus(data);
 }
 
 export async function getMyCamerasWithRuntime() {
@@ -23,11 +47,10 @@ export async function getMyCamerasWithRuntime() {
       } catch {
         return {
           ...camera,
-          runtime: {
+          runtime: normalizeCameraRuntimeStatus({
             cameraId: camera.cameraId,
             status: camera.streamStatus || "OFFLINE",
-            playbackUrl: null,
-          },
+          }),
         };
       }
     })

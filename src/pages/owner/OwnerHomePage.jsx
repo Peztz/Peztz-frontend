@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { getMyCamerasWithRuntime } from "../../api/cameras";
 import { buildPlaybackUrl } from "../../api/client";
+import { getMyPetEvents } from "../../api/events";
 import { getMyCages } from "../../api/owner";
 import { getMyPets } from "../../api/pets";
 
@@ -15,11 +16,6 @@ const DEMO_TODAY_STATUS = {
   fastingDuration: "3시간 20분",
   recentAbnormalBehavior: "감지된 이상행동 없음",
 };
-
-const DEMO_RECENT_EVENTS = [
-  { id: "demo-event-1", time: "오늘 10:42", type: "활동", detail: "정상적인 놀이 활동이 감지되었습니다." },
-  { id: "demo-event-2", time: "오늘 08:10", type: "급식", detail: "아침 급식이 완료되었습니다." },
-];
 
 const DEMO_TODAY_NOTICES = [
   { id: "demo-notice-1", title: "환경 상태가 안정적입니다.", detail: "현재 온도와 습도가 권장 범위입니다." },
@@ -58,6 +54,7 @@ function OwnerHomePage() {
   const navigate = useNavigate();
   const [pets, setPets] = useState([]);
   const [cages, setCages] = useState([]);
+  const [recentEvents, setRecentEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -96,6 +93,9 @@ function OwnerHomePage() {
 
         setPets(petData);
         setCages(normalizedCages);
+        getMyPetEvents()
+          .then((eventData) => setRecentEvents(eventData.slice(0, 5)))
+          .catch(() => setRecentEvents([]));
         localStorage.setItem("peztz_owner_pets", JSON.stringify(petData));
         localStorage.setItem("peztz_owner_cages", JSON.stringify(normalizedCages));
       } catch (error) {
@@ -238,21 +238,22 @@ function OwnerHomePage() {
             <div>
               <div className="section-title-row">
                 <h2>최근 이벤트</h2>
-                <span className="badge gray">Demo</span>
+                <span className="badge green">실제 데이터</span>
               </div>
-              <p>이벤트 영상 API 연동 전 예시 내역입니다.</p>
+              <p>최근 반려동물 이벤트 API 조회 결과입니다.</p>
             </div>
           </div>
           <div className="owner-home-list">
-            {DEMO_RECENT_EVENTS.map((event) => (
-              <article key={event.id}>
-                <span className="badge blue">{event.type}</span>
+            {recentEvents.map((event) => (
+              <article key={event.eventId}>
+                <span className="badge blue">{event.eventType}</span>
                 <div>
-                  <strong>{event.detail}</strong>
-                  <small>{event.time}</small>
+                  <strong>{event.petName} · {event.cameraName}</strong>
+                  <small>{event.occurredAt ? new Date(event.occurredAt).toLocaleString("ko-KR") : "시간 정보 없음"}</small>
                 </div>
               </article>
             ))}
+            {recentEvents.length === 0 && <div className="small-empty">최근 이벤트가 없습니다.</div>}
           </div>
         </section>
 
