@@ -134,111 +134,76 @@ function OwnerHomePage() {
     ? primaryCage.temperature
     : DEMO_TODAY_STATUS.temperature;
   const humidity = hasHumidity ? primaryCage.humidity : DEMO_TODAY_STATUS.humidity;
+  const primaryStreamStatus = primaryCage ? getCageStreamStatus(primaryCage) : "offline";
+  const specialCount = cages.reduce((sum, cage) => sum + (cage.specialCount || 0), 0);
 
   return (
     <div className="owner-page">
-      <section className="owner-hero">
-        <div>
-          <span className="eyebrow">Owner Dashboard</span>
-          <h1>견주 홈</h1>
-          <p>
-            내 반려동물의 케이지 접근 권한을 등록하고, 실시간 상태와 일일
-            리포트를 확인할 수 있습니다.
-          </p>
+      <section className="owner-care-hero">
+        <div className="care-hero-main">
+          <div className="pet-portrait" aria-hidden="true">
+            <span>{primaryPet?.name?.slice(0, 1) || "P"}</span>
+            <i className={primaryStreamStatus === "online" ? "is-online" : ""} />
+          </div>
+          <div className="care-hero-copy">
+            <span className="eyebrow">LIVE CARE OVERVIEW</span>
+            <h1>{primaryPet ? `${primaryPet.name}의 오늘을 살펴보세요` : "반려동물의 일상을 연결하세요"}</h1>
+            <p>
+              {primaryCage
+                ? `${primaryCage.facilityName || "이용 시설"} · ${primaryCage.cageName || "케이지"}에서 상태를 확인하고 있습니다.`
+                : "시설에서 받은 접근 코드를 등록하면 실시간 상태를 한곳에서 확인할 수 있어요."}
+            </p>
+            <div className="care-hero-actions">
+              {primaryCage && <button className="primary-button" onClick={() => openLivePage(primaryCage)}>실시간 모니터링</button>}
+              <button className="quiet-button" onClick={() => navigate("/owner/register-cage")}>케이지 등록 <span>→</span></button>
+            </div>
+          </div>
         </div>
-
-        <button
-          className="primary-button"
-          onClick={() => navigate("/owner/register-cage")}
-        >
-          케이지 등록
-        </button>
+        <div className="care-hero-status">
+          <span className="care-status-label">CURRENT STATUS</span>
+          <strong>{primaryCage ? (primaryStreamStatus === "online" ? "안정적으로 연결됨" : "연결 상태 확인 필요") : "연결된 케이지 없음"}</strong>
+          <div><span className={getStreamBadgeClass(primaryStreamStatus)}>{getStreamBadgeLabel(primaryStreamStatus)}</span><small>{primaryCage?.reportStatus || "등록 후 모니터링 시작"}</small></div>
+        </div>
       </section>
 
       {errorMessage && <div className="form-error">{errorMessage}</div>}
 
-      <section className="owner-summary-grid">
-        <div className="summary-card">
-          <span>등록 반려동물</span>
-          <strong>{pets.length}</strong>
-        </div>
-        <div className="summary-card">
-          <span>등록 케이지</span>
-          <strong>{cages.length}</strong>
-        </div>
-        <div className="summary-card">
-          <span>최근 특이사항</span>
-          <strong>{cages.reduce((sum, cage) => sum + (cage.specialCount || 0), 0)}</strong>
-        </div>
-      </section>
-
-      <section className="content-card owner-today-section">
+      <section className="owner-monitoring-section">
         <div className="section-header">
           <div>
             <div className="section-title-row">
-              <h2>오늘의 상태 요약</h2>
-              <span className="badge gray">Demo 데이터</span>
+              <h2>Today&apos;s overview</h2>
+              <span className="badge gray">일부 Preview</span>
             </div>
-            <p>
-              {primaryPet?.name || "반려동물"}의 오늘 상태를 한눈에 확인합니다.
-              실제 센서·행동 데이터 API 연동 전에는 Demo 값이 표시됩니다.
-            </p>
+            <p>{primaryPet?.name || "반려동물"}의 환경과 케어 흐름을 한눈에 확인하세요.</p>
           </div>
+          <div className="overview-totals"><span>반려동물 <strong>{pets.length}</strong></span><span>케이지 <strong>{cages.length}</strong></span><span>특이사항 <strong>{specialCount}</strong></span></div>
         </div>
-
-        <div className="today-status-grid">
-          <article className="today-status-card health-score-card">
-            <span>건강 점수</span>
-            <strong>{DEMO_TODAY_STATUS.healthScore}<small>/100</small></strong>
-            <p>전반적으로 안정적인 상태입니다.</p>
-            <span className="demo-label">Demo</span>
-          </article>
-          <article className="today-status-card">
-            <span>온도</span>
-            <strong>{temperature}°C</strong>
-            <p>{hasTemperature ? "케이지 센서 기준" : "센서 API 연동 예정"}</p>
-            {!hasTemperature && <span className="demo-label">Demo</span>}
-          </article>
-          <article className="today-status-card">
-            <span>습도</span>
-            <strong>{humidity}%</strong>
-            <p>{hasHumidity ? "케이지 센서 기준" : "센서 API 연동 예정"}</p>
-            {!hasHumidity && <span className="demo-label">Demo</span>}
-          </article>
-          <article className="today-status-card">
-            <span>환경 상태</span>
-            <strong>{DEMO_TODAY_STATUS.environmentStatus}</strong>
-            <p>권장 온·습도 범위입니다.</p>
-            <span className="demo-label">Demo</span>
-          </article>
-        </div>
-
-        <div className="today-detail-grid">
-          <div>
-            <span>최근 급식 시간</span>
-            <strong>{DEMO_TODAY_STATUS.lastFeedingTime}</strong>
-            <small>Demo · 급식 API 연동 예정</small>
+        <div className="monitoring-board">
+          <div className="wellness-score">
+            <div className="score-ring" style={{ "--score": `${DEMO_TODAY_STATUS.healthScore * 3.6}deg` }}><span><strong>{DEMO_TODAY_STATUS.healthScore}</strong><small>/ 100</small></span></div>
+            <div><span>WELLNESS SCORE · PREVIEW</span><h3>오늘도 편안한 하루예요</h3><p>환경과 활동 정보를 종합한 데모 건강 지표입니다.</p></div>
           </div>
-          <div>
-            <span>현재 공복 시간</span>
-            <strong>{DEMO_TODAY_STATUS.fastingDuration}</strong>
-            <small>Demo · 급식 API 연동 예정</small>
+          <div className="environment-metrics">
+            <div><span>Temperature {!hasTemperature && <small>Preview</small>}</span><strong>{temperature}<em>°C</em></strong><i style={{ width: `${Math.min(Number(temperature) / 35 * 100, 100)}%` }} /></div>
+            <div><span>Humidity {!hasHumidity && <small>Preview</small>}</span><strong>{humidity}<em>%</em></strong><i style={{ width: `${Math.min(Number(humidity), 100)}%` }} /></div>
+            <div><span>Environment <small>Preview</small></span><strong className="text-value">{DEMO_TODAY_STATUS.environmentStatus}</strong><p>권장 온·습도 범위</p></div>
           </div>
-          <div>
-            <span>최근 이상행동</span>
-            <strong>{DEMO_TODAY_STATUS.recentAbnormalBehavior}</strong>
-            <small>Demo · 행동 분석 API 연동 예정</small>
+          <div className="care-timeline">
+            <div><span>최근 급식</span><strong>{DEMO_TODAY_STATUS.lastFeedingTime}</strong><small>Preview</small></div>
+            <div><span>현재 공복 시간</span><strong>{DEMO_TODAY_STATUS.fastingDuration}</strong><small>Preview</small></div>
+            <div><span>행동 모니터링</span><strong>{DEMO_TODAY_STATUS.recentAbnormalBehavior}</strong><small>Preview</small></div>
           </div>
         </div>
       </section>
 
       <div className="owner-home-feed-grid">
-        <section className="content-card">
+        <section className="home-feed-panel">
           <div className="section-header compact">
             <div>
               <div className="section-title-row">
                 <h2>최근 이벤트</h2>
-                <span className="badge green">실제 데이터</span>
+                <span className="badge green">Live data</span>
               </div>
               <p>최근 반려동물 이벤트 API 조회 결과입니다.</p>
             </div>
@@ -257,7 +222,7 @@ function OwnerHomePage() {
           </div>
         </section>
 
-        <section className="content-card">
+        <section className="home-feed-panel notice-panel">
           <div className="section-header compact">
             <div>
               <div className="section-title-row">
@@ -281,7 +246,7 @@ function OwnerHomePage() {
         </section>
       </div>
 
-      <section className="content-card">
+      <section className="connected-section">
         <div className="section-header">
           <div>
             <h2>현재 등록된 케이지</h2>
@@ -358,7 +323,7 @@ function OwnerHomePage() {
         )}
       </section>
 
-      <section className="content-card">
+      <section className="connected-section pet-strip-section">
         <div className="section-header">
           <div>
             <h2>내 반려동물</h2>

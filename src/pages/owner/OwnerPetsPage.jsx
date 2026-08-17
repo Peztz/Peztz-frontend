@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { createPet, deletePet, getMyPets, updatePet } from "../../api/pets";
+import UiIcon from "../../components/UiIcon";
 import { formatPetAge } from "../../utils/petAge";
 
 function getPetDetail(pet) {
@@ -404,7 +405,7 @@ function OwnerPetsPage() {
           <div className="small-empty">반려동물 목록을 불러오는 중입니다.</div>
         ) : pets.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">🐶</div>
+            <div className="empty-icon"><UiIcon name="pet" size={28} /></div>
             <h3>등록된 반려동물이 없습니다</h3>
             <p>반려동물 추가 버튼을 눌러 정보를 등록해주세요.</p>
           </div>

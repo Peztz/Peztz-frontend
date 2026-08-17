@@ -5,6 +5,7 @@ import { getMyCamerasWithRuntime } from "../../api/cameras";
 import { buildPlaybackUrl } from "../../api/client";
 import { getMyCages, verifyAccessCode } from "../../api/owner";
 import { getMyPets } from "../../api/pets";
+import UiIcon from "../../components/UiIcon";
 
 function OwnerCageRegisterPage() {
   const navigate = useNavigate();
@@ -256,7 +257,7 @@ function OwnerCageRegisterPage() {
             </div>
           ) : (
             <div className="empty-state compact">
-              <div className="empty-icon">🐾</div>
+              <div className="empty-icon"><UiIcon name="pet" size={28} /></div>
               <h3>반려동물 목록이 비어 있습니다</h3>
               <p>접근 코드 인증은 가능하지만, 먼저 반려동물을 등록하면 표시가 더 정확합니다.</p>
               <button

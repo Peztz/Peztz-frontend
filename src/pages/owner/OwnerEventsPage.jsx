@@ -81,7 +81,7 @@ function OwnerEventsPage() {
 
       {errorMessage && <div className="form-error">{errorMessage}</div>}
 
-      <section className="content-card">
+      <section className="event-gallery-shell">
         <div className="section-header event-filter-header">
           <div>
             <h2>이벤트 목록</h2>
@@ -121,15 +121,15 @@ function OwnerEventsPage() {
                   <time>{formatEventTime(event.occurredAt)}</time>
                   <p>{event.cameraName} · {event.eventDurationSeconds ?? "-"}초</p>
                   <button
-                    className="secondary-button full"
+                    className="event-detail-button"
                     onClick={() => openEvent(event)}
                     disabled={detailLoadingId === event.eventId}
                   >
-                    {detailLoadingId === event.eventId ? "상세 조회 중" : "상세 보기"}
+                    {detailLoadingId === event.eventId ? "상세 조회 중" : "이벤트 정보"}
                   </button>
                   {event.videoUrl ? (
-                    <a className="primary-button event-video-link" href={event.videoUrl} target="_blank" rel="noreferrer">
-                      이벤트 영상 보기
+                    <a className="event-video-link" href={event.videoUrl} target="_blank" rel="noreferrer">
+                      영상 재생 <span>→</span>
                     </a>
                   ) : (
                     <button className="secondary-button full" disabled>영상 없음</button>

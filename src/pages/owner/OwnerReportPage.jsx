@@ -65,7 +65,7 @@ function OwnerReportPage() {
         <span className="badge green">API 연결</span>
       </section>
 
-      <section className="content-card">
+      <section className="report-query-bar">
         <div className="section-header">
           <div><h2>조회 조건</h2><p>반려동물과 날짜를 선택해 주세요.</p></div>
         </div>
@@ -96,17 +96,17 @@ function OwnerReportPage() {
 
       {report && (
         <>
-          <section className="live-metric-grid">
-            <article className="live-metric-card"><span>전체 로그</span><strong>{report.totalLogCount}건</strong><p>{report.date}</p></article>
-            <article className="live-metric-card"><span>센서 로그</span><strong>{report.sensorLogCount}건</strong><p>온·습도 측정 기록</p></article>
-            <article className="live-metric-card"><span>평균 온도</span><strong>{report.averageTemperature == null ? "-" : `${report.averageTemperature}°C`}</strong><p>측정 로그 평균</p></article>
-            <article className="live-metric-card"><span>평균 습도</span><strong>{report.averageHumidity == null ? "-" : `${report.averageHumidity}%`}</strong><p>측정 로그 평균</p></article>
+          <section className="wellness-report">
+            <header><div><span className="eyebrow">DAILY WELLNESS REPORT</span><h2>{pets.find((pet) => String(pet.id || pet.petId) === selectedPetId)?.name || "반려동물"}</h2></div><time>{report.date}</time></header>
+            <div className="report-metrics">
+              <div><span>평균 온도</span><strong>{report.averageTemperature == null ? "-" : report.averageTemperature}<small>°C</small></strong><p>측정 로그 평균</p></div>
+              <div><span>평균 습도</span><strong>{report.averageHumidity == null ? "-" : report.averageHumidity}<small>%</small></strong><p>측정 로그 평균</p></div>
+              <div><span>전체 로그</span><strong>{report.totalLogCount}<small>건</small></strong><p>오늘 수집된 기록</p></div>
+              <div><span>센서 로그</span><strong>{report.sensorLogCount}<small>건</small></strong><p>온·습도 측정 기록</p></div>
+            </div>
+            <div className="report-insight"><span>오늘의 인사이트</span><p>{report.summary}</p></div>
           </section>
-          <section className="content-card">
-            <div className="section-header"><div><h2>오늘의 요약</h2><p>백엔드 일일 리포트가 제공한 실제 요약입니다.</p></div></div>
-            <div className="report-box"><p>{report.summary}</p></div>
-          </section>
-          <section className="content-card">
+          <section className="report-coming-soon">
             <div className="section-header"><div><h2>추가 건강 분석</h2><p>체중 변화, 수면 분석, 건강 점수는 백엔드 API 제공 후 연결됩니다.</p></div><span className="badge gray">연동 예정</span></div>
           </section>
         </>
