@@ -1,3 +1,8 @@
+import SmartThingsDeviceManager from "../../components/smartthings/SmartThingsDeviceManager";
+import { DEFAULT_FACILITY_ID, getFacilityCages } from "../../api/facility";
+
+const loadFacilityCages = () => getFacilityCages(DEFAULT_FACILITY_ID);
+
 function FacilityDevicesPage() {
   const devices = [
     {
@@ -105,6 +110,10 @@ function FacilityDevicesPage() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="facility-card">
+        <SmartThingsDeviceManager loadCages={loadFacilityCages} />
       </section>
     </div>
   );

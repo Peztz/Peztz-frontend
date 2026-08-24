@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getAdminDevices } from "../../api/admin";
+import { getAdminCages, getAdminDevices } from "../../api/admin";
+import SmartThingsDeviceManager from "../../components/smartthings/SmartThingsDeviceManager";
 
 const UUID_PATTERN =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -259,6 +260,10 @@ function AdminDevicesPage() {
             })}
           </div>
         )}
+      </section>
+
+      <section className="admin-card">
+        <SmartThingsDeviceManager loadCages={getAdminCages} />
       </section>
     </div>
   );
