@@ -3,6 +3,19 @@ import { springApi } from "./client";
 // TODO: Replace this test default with the facilityId assigned to the logged-in facility account.
 export const DEFAULT_FACILITY_ID = "11111111-1111-1111-1111-111111111111";
 
+function normalizeFacilityLog(log = {}) {
+  return {
+    ...log,
+    id: log.logId ?? log.id,
+    logId: log.logId ?? log.id,
+    type: String(log.type || "OTHER").toUpperCase(),
+    category: String(log.category || "OTHER").toUpperCase(),
+    level: String(log.level || "NORMAL").toUpperCase(),
+    message: log.message || "",
+    createdAt: log.createdAt || "",
+  };
+}
+
 export async function getAllCages() {
   const { data } = await springApi.get("/api/cages");
   return data;
@@ -11,6 +24,16 @@ export async function getAllCages() {
 export async function getFacilityCages(facilityId = DEFAULT_FACILITY_ID) {
   const { data } = await springApi.get(`/api/facilities/${facilityId}/cages`);
   return data;
+}
+
+export async function getFacilityLogs(
+  facilityId = DEFAULT_FACILITY_ID,
+  limit = 100
+) {
+  const { data } = await springApi.get(`/api/facilities/${facilityId}/logs`, {
+    params: { limit },
+  });
+  return (Array.isArray(data) ? data : []).map(normalizeFacilityLog);
 }
 
 export async function createFacilityCage(

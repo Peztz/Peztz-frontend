@@ -1,38 +1,111 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  DEFAULT_FACILITY_ID,
+  getFacilityLogs,
+} from "../../api/facility";
+import {
+  getOwnerEventLabel,
+  getOwnerEventMessage,
+} from "../../utils/ownerPresentation";
+
+const LOG_REFRESH_INTERVAL_MS = 15_000;
+const CATEGORY_LABELS = {
+  SENSOR: "센서",
+  BEHAVIOR: "행동",
+  ACCESS: "접근",
+  SESSION: "입실",
+  NETWORK: "네트워크",
+  OTHER: "기타",
+};
+
+function isToday(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}
+
+function formatTime(value) {
+  if (!value) return "시간 정보 없음";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function cageLabel(log) {
+  const cage = [log.cageNumber, log.cageName].filter(Boolean).join(" · ");
+  return cage || "케이지 정보 없음";
+}
+
 function FacilityLogsPage() {
-  const logs = [
-    {
-      id: "LOG-001",
-      type: "NETWORK",
-      message: "RP-005 마지막 핑 5분 이상 지연",
-      cage: "5번 케이지",
-      time: "2026-05-15 12:20",
-      level: "WARNING",
-    },
-    {
-      id: "LOG-002",
-      type: "ACCESS",
-      message: "초코 보호자 접근 코드 인증 성공",
-      cage: "1번 케이지",
-      time: "2026-05-15 12:02",
-      level: "NORMAL",
-    },
-    {
-      id: "LOG-003",
-      type: "SESSION",
-      message: "콩이 입실 세션 ACTIVE 전환",
-      cage: "3번 케이지",
-      time: "2026-05-15 11:05",
-      level: "NORMAL",
-    },
-    {
-      id: "LOG-004",
-      type: "TEMP",
-      message: "케이지 내부 온도 기준값 초과",
-      cage: "2번 케이지",
-      time: "2026-05-15 10:44",
-      level: "WARNING",
-    },
-  ];
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const requestInFlight = useRef(false);
+
+  const loadLogs = useCallback(async (silent = false) => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    if (silent) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      setError("");
+      const data = await getFacilityLogs(DEFAULT_FACILITY_ID, 100);
+      setLogs(data);
+      setLastUpdatedAt(new Date());
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          "시설 운영 로그를 불러오지 못했습니다."
+      );
+    } finally {
+      requestInFlight.current = false;
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const initialRequestId = window.setTimeout(() => loadLogs(), 0);
+    const intervalId = window.setInterval(
+      () => loadLogs(true),
+      LOG_REFRESH_INTERVAL_MS
+    );
+    return () => {
+      window.clearTimeout(initialRequestId);
+      window.clearInterval(intervalId);
+    };
+  }, [loadLogs]);
+
+  const todayLogs = useMemo(
+    () => logs.filter((log) => isToday(log.createdAt)),
+    [logs]
+  );
+  const summary = useMemo(
+    () => ({
+      total: todayLogs.length,
+      warning: todayLogs.filter((log) => log.level === "WARNING").length,
+      sensor: todayLogs.filter((log) => log.category === "SENSOR").length,
+      behavior: todayLogs.filter((log) => log.category === "BEHAVIOR").length,
+    }),
+    [todayLogs]
+  );
 
   return (
     <div className="facility-page">
@@ -40,71 +113,99 @@ function FacilityLogsPage() {
         <div>
           <span className="eyebrow">Event Log</span>
           <h1>로그/이벤트 관리</h1>
-          <p>
-            센서, 네트워크, 접근 코드, 세션, 리포트 관련 이벤트를 조회합니다.
-          </p>
+          <p>시설의 센서 상태 변화와 반려동물 행동 이벤트를 확인합니다.</p>
         </div>
       </section>
 
       <section className="facility-summary-grid">
         <div className="facility-stat-card">
           <span>오늘 이벤트</span>
-          <strong>24</strong>
-          <p>전체 발생 건수</p>
+          <strong>{summary.total}</strong>
+          <p>오늘 발생한 전체 기록</p>
         </div>
         <div className="facility-stat-card danger">
-          <span>경고 이벤트</span>
-          <strong>2</strong>
-          <p>확인 필요</p>
+          <span>주의 이벤트</span>
+          <strong>{summary.warning}</strong>
+          <p>확인이 필요한 기록</p>
         </div>
         <div className="facility-stat-card">
-          <span>접근 기록</span>
-          <strong>9</strong>
-          <p>보호자 인증</p>
+          <span>센서 이벤트</span>
+          <strong>{summary.sensor}</strong>
+          <p>문 열림과 조도 변화</p>
         </div>
         <div className="facility-stat-card">
-          <span>세션 기록</span>
-          <strong>6</strong>
-          <p>입실/퇴실 처리</p>
+          <span>행동 이벤트</span>
+          <strong>{summary.behavior}</strong>
+          <p>AI가 감지한 행동</p>
         </div>
       </section>
 
       <section className="facility-card">
         <div className="section-header">
           <div>
-            <h2>이벤트 목록</h2>
-            <p>SENSOR, NETWORK, ACCESS, SESSION, TEMP 등의 이벤트를 확인합니다.</p>
+            <h2>최근 이벤트</h2>
+            <p>
+              시설의 최근 기록을 최대 100개까지 표시하며 15초마다 자동으로 갱신합니다.
+            </p>
+          </div>
+          <div className="facility-log-actions">
+            <span>
+              {lastUpdatedAt
+                ? `마지막 갱신 ${formatTime(lastUpdatedAt)}`
+                : "갱신 대기"}
+            </span>
+            <button
+              type="button"
+              className="mini-button"
+              disabled={loading || refreshing}
+              onClick={() => loadLogs(true)}
+            >
+              {refreshing ? "갱신 중..." : "새로고침"}
+            </button>
           </div>
         </div>
 
-        <div className="log-list">
-          {logs.map((log) => (
-            <article className="log-item" key={log.id}>
-              <div
-                className={
-                  log.level === "WARNING"
-                    ? "log-type warning"
-                    : "log-type normal"
-                }
-              >
-                {log.type}
-              </div>
+        {error && <p className="facility-log-state error">{error}</p>}
+        {loading && logs.length === 0 && (
+          <p className="facility-log-state">운영 로그를 불러오는 중입니다.</p>
+        )}
+        {!loading && !error && logs.length === 0 && (
+          <p className="facility-log-state">아직 저장된 운영 로그가 없습니다.</p>
+        )}
 
-              <div className="log-content">
-                <strong>{log.message}</strong>
-                <p>
-                  {log.cage} · {log.time}
-                </p>
-              </div>
+        {logs.length > 0 && (
+          <div className="log-list">
+            {logs.map((log) => (
+              <article className="log-item" key={log.id}>
+                <div
+                  className={
+                    log.level === "WARNING"
+                      ? "log-type warning"
+                      : "log-type normal"
+                  }
+                >
+                  {CATEGORY_LABELS[log.category] || CATEGORY_LABELS.OTHER}
+                </div>
 
-              <span
-                className={log.level === "WARNING" ? "badge red" : "badge green"}
-              >
-                {log.level}
-              </span>
-            </article>
-          ))}
-        </div>
+                <div className="log-content">
+                  <strong>{getOwnerEventMessage(log)}</strong>
+                  <p>
+                    {cageLabel(log)} · {log.petName || "반려동물 정보 없음"} ·{" "}
+                    {getOwnerEventLabel(log.type)} · {formatTime(log.createdAt)}
+                  </p>
+                </div>
+
+                <span
+                  className={
+                    log.level === "WARNING" ? "badge red" : "badge green"
+                  }
+                >
+                  {log.level === "WARNING" ? "확인 필요" : "일반"}
+                </span>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

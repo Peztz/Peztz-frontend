@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   disconnectSmartThingsDevice,
+  getCageSmartThingsDevices,
   getLatestCageSmartThingsReadings,
   getSmartThingsDevices,
   registerSmartThingsDevice,
@@ -139,8 +140,10 @@ function SmartThingsDeviceManager({ loadCages }) {
   const [readingsLoading, setReadingsLoading] = useState(false);
   const [error, setError] = useState("");
   const [readingsError, setReadingsError] = useState("");
+  const [statusError, setStatusError] = useState("");
   const [notice, setNotice] = useState("");
   const readingsRequestInFlight = useRef(false);
+  const statusRequestInFlight = useRef(false);
 
   const loadLatestReadings = useCallback(async (deviceList, showLoading = false) => {
     if (readingsRequestInFlight.current) return;
@@ -211,6 +214,68 @@ function SmartThingsDeviceManager({ loadCages }) {
     }
   }, []);
 
+  const loadDeviceStatuses = useCallback(async (deviceList) => {
+    if (statusRequestInFlight.current) return;
+
+    const cageIds = [
+      ...new Set(
+        deviceList
+          .filter((device) => isRegistered(device) && device.mapping?.cageId)
+          .map((device) => String(device.mapping.cageId))
+      ),
+    ];
+
+    if (cageIds.length === 0) {
+      setStatusError("");
+      return;
+    }
+
+    statusRequestInFlight.current = true;
+    try {
+      const results = await Promise.allSettled(
+        cageIds.map((id) => getCageSmartThingsDevices(id))
+      );
+      const fulfilledResults = results.filter(
+        (result) => result.status === "fulfilled"
+      );
+
+      if (fulfilledResults.length === 0) {
+        const firstFailure = results.find((result) => result.status === "rejected");
+        throw firstFailure?.reason;
+      }
+
+      const successfulResults = fulfilledResults.flatMap((result) =>
+        toArray(result.value)
+      );
+
+      const mappings = new Map(
+        successfulResults.map((mapping) => [String(mapping.deviceId), mapping])
+      );
+      setDevices((current) =>
+        current.map((device) => {
+          const mapping = mappings.get(String(device.deviceId));
+          if (!mapping) return device;
+          return {
+            ...device,
+            registered: true,
+            mapping: { ...device.mapping, ...mapping },
+          };
+        })
+      );
+      setStatusError(
+        results.every((result) => result.status === "fulfilled")
+          ? ""
+          : "일부 센서의 연결 상태를 갱신하지 못했습니다."
+      );
+    } catch (requestError) {
+      setStatusError(
+        apiError(requestError, "센서 연결 상태를 갱신하지 못했습니다")
+      );
+    } finally {
+      statusRequestInFlight.current = false;
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
@@ -242,10 +307,11 @@ function SmartThingsDeviceManager({ loadCages }) {
 
     const intervalId = window.setInterval(() => {
       loadLatestReadings(devices);
+      loadDeviceStatuses(devices);
     }, SENSOR_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [devices, loadLatestReadings, loading]);
+  }, [devices, loadDeviceStatuses, loadLatestReadings, loading]);
 
   const cageMap = useMemo(
     () => new Map(cages.map((cage) => [String(cageId(cage)), cage])),
@@ -300,6 +366,7 @@ function SmartThingsDeviceManager({ loadCages }) {
           ? "센서가 오프라인입니다. Station 연결 상태를 확인해주세요."
           : apiError(requestError, "센서 동기화에 실패했습니다")
       );
+      await loadDeviceStatuses(devices);
     } finally {
       setAction(device.deviceId, "");
     }
@@ -350,6 +417,7 @@ function SmartThingsDeviceManager({ loadCages }) {
       {notice && <p className="smartthings-notice success">{notice}</p>}
       {error && <p className="smartthings-notice error">{error}</p>}
       {readingsError && <p className="smartthings-notice error">{readingsError}</p>}
+      {statusError && <p className="smartthings-notice error">{statusError}</p>}
       {loading && <p className="smartthings-empty">센서 목록을 불러오는 중...</p>}
       {!loading && !error && devices.length === 0 && (
         <p className="smartthings-empty">사용 가능한 SmartThings 센서가 없습니다.</p>
@@ -367,8 +435,6 @@ function SmartThingsDeviceManager({ loadCages }) {
             };
             const action = actions[device.deviceId];
             const title = managementLabel(device);
-            const nativeName = String(device.displayName || "").trim();
-            const showNativeName = registered && nativeName && nativeName !== title;
 
             return (
               <article
@@ -379,11 +445,6 @@ function SmartThingsDeviceManager({ loadCages }) {
                   <div>
                     <span className="eyebrow">SmartThings Sensor</span>
                     <h3 title={title}>{title}</h3>
-                    {showNativeName && (
-                      <p className="smartthings-native-name" title={nativeName}>
-                        SmartThings 이름 · {nativeName}
-                      </p>
-                    )}
                     <div className="smartthings-device-id-row" title={device.deviceId}>
                       <span>기기 ID</span>
                       <code>{shortDeviceId(device.deviceId)}</code>
