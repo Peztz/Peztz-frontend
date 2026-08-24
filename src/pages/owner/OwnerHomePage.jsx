@@ -6,6 +6,10 @@ import { buildPlaybackUrl } from "../../api/client";
 import { getMyPetEvents } from "../../api/events";
 import { getMyCages } from "../../api/owner";
 import { getMyPets } from "../../api/pets";
+import {
+  getLatestCageSmartThingsReadings,
+  indexLatestSmartThingsReadings,
+} from "../../api/smartthings";
 
 const DEMO_TODAY_STATUS = {
   healthScore: 92,
@@ -119,6 +123,72 @@ function OwnerHomePage() {
 
     loadOwnerData();
   }, []);
+
+  const cageIdsKey = cages
+    .map((cage) => cage.cageId)
+    .filter(Boolean)
+    .map(String)
+    .join(",");
+
+  useEffect(() => {
+    if (!cageIdsKey) return undefined;
+    const cageIds = cageIdsKey.split(",");
+    let cancelled = false;
+    let requestInFlight = false;
+
+    const loadLatestSensorReadings = async () => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+
+      let results;
+      try {
+        results = await Promise.allSettled(
+          cageIds.map((id) => getLatestCageSmartThingsReadings(id))
+        );
+      } finally {
+        requestInFlight = false;
+      }
+      if (cancelled) return;
+
+      const sensorValuesByCage = new Map();
+      results.forEach((result, index) => {
+        if (result.status !== "fulfilled") return;
+        sensorValuesByCage.set(
+          cageIds[index],
+          indexLatestSmartThingsReadings(result.value.readings)
+        );
+      });
+      if (sensorValuesByCage.size === 0) return;
+
+      setCages((currentCages) => {
+        const updatedCages = currentCages.map((cage) => {
+          const readings = sensorValuesByCage.get(String(cage.cageId));
+          if (!readings) return cage;
+          return {
+            ...cage,
+            temperature:
+              readings.temperature?.numericValue ?? cage.temperature,
+            humidity: readings.humidity?.numericValue ?? cage.humidity,
+            illuminance:
+              readings.illuminance?.numericValue ?? cage.illuminance,
+            contact: readings.contact?.stringValue ?? cage.contact,
+          };
+        });
+        localStorage.setItem(
+          "peztz_owner_cages",
+          JSON.stringify(updatedCages)
+        );
+        return updatedCages;
+      });
+    };
+
+    loadLatestSensorReadings();
+    const intervalId = window.setInterval(loadLatestSensorReadings, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [cageIdsKey]);
 
   const openLivePage = (cage) => {
     navigate(`/owner/cages/${cage.id}/live`, { state: { cage } });

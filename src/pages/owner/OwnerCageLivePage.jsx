@@ -6,8 +6,8 @@ import { getMyCameras, getCameraRuntimeStatus } from "../../api/cameras";
 import { getSessionLogs } from "../../api/owner";
 import { getDailyReport } from "../../api/reports";
 import {
-  getSmartThingsDevices,
-  getSmartThingsDeviceStatus,
+  getLatestCageSmartThingsReadings,
+  indexLatestSmartThingsReadings,
 } from "../../api/smartthings";
 import { formatPetAge } from "../../utils/petAge";
 
@@ -34,6 +34,13 @@ function getDeviceState(value) {
   };
 }
 
+function formatContactState(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "open") return "열림";
+  if (normalized === "closed") return "닫힘";
+  return "-";
+}
+
 function OwnerCageLivePage() {
   const { cageId } = useParams();
   const navigate = useNavigate();
@@ -46,7 +53,7 @@ function OwnerCageLivePage() {
   const [report, setReport] = useState(null);
   const [camera, setCamera] = useState(null);
   const [cameraRuntime, setCameraRuntime] = useState(null);
-  const [smartThingsDevices, setSmartThingsDevices] = useState([]);
+  const [latestSensorReadings, setLatestSensorReadings] = useState({});
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -180,17 +187,12 @@ function OwnerCageLivePage() {
     let cancelled = false;
 
     const loadConnectedDevices = async () => {
-      const [cameraResult, smartThingsResult] = await Promise.allSettled([
-        getMyCameras(),
-        getSmartThingsDevices(),
-      ]);
-
-      if (cancelled) return;
-
-      if (cameraResult.status === "fulfilled") {
+      try {
+        const cameras = await getMyCameras();
+        if (cancelled) return;
         const matchedCamera =
-          cameraResult.value.find((item) => String(item.cageId) === String(cage.cageId)) ||
-          cameraResult.value[0] ||
+          cameras.find((item) => String(item.cageId) === String(cage.cageId)) ||
+          cameras[0] ||
           null;
         setCamera(matchedCamera);
 
@@ -202,26 +204,45 @@ function OwnerCageLivePage() {
             if (!cancelled) setCameraRuntime(null);
           }
         }
-      }
-
-      if (smartThingsResult.status === "fulfilled") {
-        const devicesWithStatus = await Promise.all(
-          smartThingsResult.value.map(async (device) => {
-            try {
-              const status = await getSmartThingsDeviceStatus(device.deviceId);
-              return { ...device, runtimeStatus: status };
-            } catch {
-              return { ...device, runtimeStatus: null };
-            }
-          })
-        );
-        if (!cancelled) setSmartThingsDevices(devicesWithStatus);
+      } catch {
+        if (!cancelled) {
+          setCamera(null);
+          setCameraRuntime(null);
+        }
       }
     };
 
     loadConnectedDevices();
     return () => {
       cancelled = true;
+    };
+  }, [cage.cageId]);
+
+  useEffect(() => {
+    if (!cage.cageId) return undefined;
+    let cancelled = false;
+    let requestInFlight = false;
+
+    const loadLatestSensorReadings = async () => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      try {
+        const data = await getLatestCageSmartThingsReadings(cage.cageId);
+        if (!cancelled) {
+          setLatestSensorReadings(indexLatestSmartThingsReadings(data.readings));
+        }
+      } catch {
+        // 일시적인 통신 실패 시 마지막으로 확인한 측정값을 유지합니다.
+      } finally {
+        requestInFlight = false;
+      }
+    };
+
+    loadLatestSensorReadings();
+    const intervalId = window.setInterval(loadLatestSensorReadings, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [cage.cageId]);
 
@@ -238,9 +259,17 @@ function OwnerCageLivePage() {
     .reverse()
     .find((log) => log.temperature != null || log.humidity != null);
   const currentTemperature =
-    latestSensorLog?.temperature ?? cage.temperature ?? report?.averageTemperature;
+    latestSensorReadings.temperature?.numericValue ??
+    latestSensorLog?.temperature ??
+    cage.temperature ??
+    report?.averageTemperature;
   const currentHumidity =
-    latestSensorLog?.humidity ?? cage.humidity ?? report?.averageHumidity;
+    latestSensorReadings.humidity?.numericValue ??
+    latestSensorLog?.humidity ??
+    cage.humidity ??
+    report?.averageHumidity;
+  const currentIlluminance = latestSensorReadings.illuminance?.numericValue;
+  const currentContact = latestSensorReadings.contact?.stringValue;
   const recentEvents = displayLogs.slice(-3).reverse();
   const deviceCards = [
     { key: "fan", label: "선풍기", state: getDeviceState(cage.fanStatus) },
@@ -260,16 +289,7 @@ function OwnerCageLivePage() {
       state: getDeviceState(cage.deviceStatus),
     },
   ];
-  const connectedDeviceCards = smartThingsDevices.map((device) => ({
-    key: device.deviceId,
-    label: device.displayName,
-    state: {
-      label: device.runtimeStatus ? "상태 조회 완료" : "상태 조회 실패",
-      className: device.runtimeStatus ? "badge green" : "badge red",
-      isConnected: Boolean(device.runtimeStatus),
-    },
-  }));
-  const visibleDeviceCards = connectedDeviceCards.length > 0 ? connectedDeviceCards : deviceCards;
+  const visibleDeviceCards = deviceCards;
 
   const handleAsk = () => {
     if (!question.trim()) {
@@ -463,6 +483,8 @@ function OwnerCageLivePage() {
             <div><span>영상 스트림</span><strong>{videoStatusLabel}</strong></div>
             <div><span>현재 온도</span><strong>{formatSensorValue(currentTemperature, "°C")}</strong></div>
             <div><span>현재 습도</span><strong>{formatSensorValue(currentHumidity, "%")}</strong></div>
+            <div><span>현재 조도</span><strong>{formatSensorValue(currentIlluminance, " lux")}</strong></div>
+            <div><span>문 상태</span><strong>{formatContactState(currentContact)}</strong></div>
           </div>
         </article>
 
