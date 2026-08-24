@@ -1,4 +1,5 @@
 import { springApi } from "./client";
+import { toOwnerFriendlyText } from "../utils/ownerPresentation";
 
 function asStringArray(value) {
   return Array.isArray(value)
@@ -22,18 +23,23 @@ export function normalizeDailyReport(report = {}) {
     sensorLogCount: Number(report.sensorLogCount ?? 0),
     averageTemperature: asNullableNumber(report.averageTemperature),
     averageHumidity: asNullableNumber(report.averageHumidity),
-    summary: report.summary || "등록된 일일 리포트 요약이 없습니다.",
+    summary: toOwnerFriendlyText(
+      report.summary || "등록된 일일 리포트 요약이 없습니다."
+    ),
     behaviorCards: Array.isArray(report.behaviorCards)
       ? report.behaviorCards.map((card = {}) => ({
-          title: card.title || "행동 관찰",
-          description: card.description || "상세 설명이 없습니다.",
-          evidence: asStringArray(card.evidence),
+          title: toOwnerFriendlyText(card.title || "행동 관찰"),
+          description: toOwnerFriendlyText(
+            card.description || "상세 설명이 없습니다."
+          ),
+          evidence: asStringArray(card.evidence).map(toOwnerFriendlyText),
         }))
       : [],
     environmentCard: {
-      title: environmentCard.title || "생활 환경",
-      description:
-        environmentCard.description || "환경 분석 결과가 충분하지 않습니다.",
+      title: toOwnerFriendlyText(environmentCard.title || "생활 환경"),
+      description: toOwnerFriendlyText(
+        environmentCard.description || "환경 분석 결과가 충분하지 않습니다."
+      ),
       averageTemperature: asNullableNumber(
         environmentCard.averageTemperature ?? report.averageTemperature
       ),
@@ -43,13 +49,14 @@ export function normalizeDailyReport(report = {}) {
       doorOpenCount: Number(environmentCard.doorOpenCount ?? 0),
       lowLightCount: Number(environmentCard.lowLightCount ?? 0),
     },
-    careTips: asStringArray(report.careTips),
+    careTips: asStringArray(report.careTips).map(toOwnerFriendlyText),
     riskLevel: ["NORMAL", "ATTENTION", "URGENT"].includes(report.riskLevel)
       ? report.riskLevel
       : "NORMAL",
-    warnings: asStringArray(report.warnings),
-    disclaimer:
-      report.disclaimer || "이 리포트는 진단이 아닌 관찰 데이터 요약입니다.",
+    warnings: asStringArray(report.warnings).map(toOwnerFriendlyText),
+    disclaimer: toOwnerFriendlyText(
+      report.disclaimer || "이 리포트는 진단이 아닌 관찰 데이터 요약입니다."
+    ),
   };
 }
 

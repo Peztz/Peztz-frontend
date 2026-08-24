@@ -10,6 +10,10 @@ import {
   indexLatestSmartThingsReadings,
 } from "../../api/smartthings";
 import { formatPetAge } from "../../utils/petAge";
+import {
+  getOwnerEventLabel,
+  getOwnerEventMessage,
+} from "../../utils/ownerPresentation";
 
 function formatSensorValue(value, unit) {
   if (value === undefined || value === null || value === "") return "-";
@@ -39,6 +43,40 @@ function formatContactState(value) {
   if (normalized === "open") return "열림";
   if (normalized === "closed") return "닫힘";
   return "-";
+}
+
+function formatCageStatus(value) {
+  const normalized = String(value || "").toUpperCase();
+  if (["OCCUPIED", "ACTIVE"].includes(normalized)) return "입실 중";
+  if (normalized === "AVAILABLE") return "사용 가능";
+  return "확인 필요";
+}
+
+function getCameraDisplayState(value) {
+  const normalized = String(value || "").toUpperCase();
+
+  if (["ONLINE", "RUNNING", "STREAMING", "ACTIVE"].includes(normalized)) {
+    return { label: "영상 전송 중", className: "badge green" };
+  }
+  if (["STARTING", "CHECKING"].includes(normalized)) {
+    return { label: "연결 확인 중", className: "badge gray" };
+  }
+  if (normalized === "IDLE") {
+    return { label: "영상 대기 중", className: "badge gray" };
+  }
+  if (["OFFLINE", "FAILED", "ERROR"].includes(normalized)) {
+    return { label: "연결 안 됨", className: "badge red" };
+  }
+  return { label: "상태 확인 필요", className: "badge gray" };
+}
+
+function formatCameraMessage(value) {
+  const message = String(value || "").trim();
+  if (!message) return "카메라 상태 안내가 없습니다.";
+  if (/not publishing this camera stream/i.test(message)) {
+    return "카메라 영상이 전송되지 않고 있습니다.";
+  }
+  return message;
 }
 
 function OwnerCageLivePage() {
@@ -127,10 +165,10 @@ function OwnerCageLivePage() {
         : "badge red";
   const videoStatusLabel =
     videoStreamStatus === "online"
-      ? "ONLINE"
+      ? "연결됨"
       : videoStreamStatus === "checking"
         ? "확인 중"
-        : "OFFLINE";
+        : "연결 안 됨";
   const videoUrlStatusLabel = !videoUrl
     ? "없음"
     : videoStreamStatus === "online"
@@ -138,6 +176,12 @@ function OwnerCageLivePage() {
       : videoStreamStatus === "checking"
         ? "확인 중"
         : "연결 실패";
+  const cameraDisplayState = getCameraDisplayState(
+    cameraRuntime?.status || cameraRuntime?.streamStatus || camera?.streamStatus
+  );
+  const cameraDisplayMessage = formatCameraMessage(
+    cameraRuntime?.message || camera?.status
+  );
   // TODO: Ask backend to include petBreed, birthDate, and medicalNote/memo in OwnerCageResponse.
   const petBreed = cage.petBreed || cage.breed || cage.pet?.breed || "";
   const petBirthDate = cage.birthDate || cage.petBirthDate || cage.pet?.birthDate || "";
@@ -249,15 +293,15 @@ function OwnerCageLivePage() {
   const displayLogs = logs.map((log) => ({
     id: log.id,
     time: log.createdAt ? log.createdAt.slice(11, 16) : "-",
-    type: log.type,
-    message: log.message || "메시지가 없습니다.",
+    type: getOwnerEventLabel(log.type),
+    message: getOwnerEventMessage(log),
     level: log.type === "SENSOR" ? "NORMAL" : "INFO",
     temperature: log.temperature,
     humidity: log.humidity,
   }));
-  const latestSensorLog = [...displayLogs]
-    .reverse()
-    .find((log) => log.temperature != null || log.humidity != null);
+  const latestSensorLog = displayLogs.find(
+    (log) => log.temperature != null || log.humidity != null
+  );
   const currentTemperature =
     latestSensorReadings.temperature?.numericValue ??
     latestSensorLog?.temperature ??
@@ -270,7 +314,7 @@ function OwnerCageLivePage() {
     report?.averageHumidity;
   const currentIlluminance = latestSensorReadings.illuminance?.numericValue;
   const currentContact = latestSensorReadings.contact?.stringValue;
-  const recentEvents = displayLogs.slice(-3).reverse();
+  const recentEvents = displayLogs.slice(0, 3);
   const deviceCards = [
     { key: "fan", label: "선풍기", state: getDeviceState(cage.fanStatus) },
     {
@@ -446,16 +490,14 @@ function OwnerCageLivePage() {
             </article>
           ))}
           {camera && (
-            <article className="live-device-status-card">
+            <article className="live-device-status-card camera-card">
               <div>
                 <span>{camera.name}</span>
-                <strong className={cameraRuntime ? "badge green" : "badge gray"}>
-                  {cameraRuntime?.streamStatus || camera.streamStatus}
+                <strong className={cameraDisplayState.className}>
+                  {cameraDisplayState.label}
                 </strong>
               </div>
-              <button className="secondary-button" disabled>
-                {cameraRuntime?.message || camera.status}
-              </button>
+              <p className="live-device-status-message">{cameraDisplayMessage}</p>
             </article>
           )}
           <article className="live-device-status-card voice-card">
@@ -479,7 +521,7 @@ function OwnerCageLivePage() {
             </div>
           </div>
           <div className="live-cage-status-list">
-            <div><span>입실 상태</span><strong>{cage.status || "확인 필요"}</strong></div>
+            <div><span>입실 상태</span><strong>{formatCageStatus(cage.status)}</strong></div>
             <div><span>영상 스트림</span><strong>{videoStatusLabel}</strong></div>
             <div><span>현재 온도</span><strong>{formatSensorValue(currentTemperature, "°C")}</strong></div>
             <div><span>현재 습도</span><strong>{formatSensorValue(currentHumidity, "%")}</strong></div>
@@ -533,9 +575,9 @@ function OwnerCageLivePage() {
               <p>일일 리포트 또는 최근 케이지 습도입니다.</p>
             </div>
             <div>
-              <span>로그 수</span>
+              <span>기록 수</span>
               <strong>{report?.totalLogCount ?? displayLogs.length}</strong>
-              <p>조회된 세션 로그 기준입니다.</p>
+              <p>입실 중 수집된 기록 기준입니다.</p>
             </div>
           </div>
         </section>
@@ -545,15 +587,15 @@ function OwnerCageLivePage() {
         <section className="content-card">
           <div className="section-header">
             <div>
-              <h2>특이사항 로그</h2>
-              <p>세션 로그가 시간순으로 표시됩니다.</p>
+              <h2>특이사항 기록</h2>
+              <p>입실 중 수집된 기록이 시간순으로 표시됩니다.</p>
             </div>
           </div>
 
           {isLogsLoading ? (
-            <div className="small-empty">세션 로그를 불러오는 중입니다.</div>
+            <div className="small-empty">특이사항 기록을 불러오는 중입니다.</div>
           ) : displayLogs.length === 0 ? (
-            <div className="small-empty">조회된 세션 로그가 없습니다.</div>
+            <div className="small-empty">조회된 특이사항 기록이 없습니다.</div>
           ) : (
             <div className="owner-log-list">
               {displayLogs.map((log) => (

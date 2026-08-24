@@ -10,6 +10,7 @@ import {
   getLatestCageSmartThingsReadings,
   indexLatestSmartThingsReadings,
 } from "../../api/smartthings";
+import { getOwnerEventLabel } from "../../utils/ownerPresentation";
 
 const DEMO_TODAY_STATUS = {
   healthScore: 92,
@@ -42,9 +43,9 @@ function getStreamBadgeClass(status) {
 }
 
 function getStreamBadgeLabel(status) {
-  if (status === "online") return "ONLINE";
+  if (status === "online") return "연결됨";
   if (status === "checking") return "확인 중";
-  return "OFFLINE";
+  return "연결 안 됨";
 }
 
 function getVideoInfoLabel(cage, status) {
@@ -194,8 +195,15 @@ function OwnerHomePage() {
     navigate(`/owner/cages/${cage.id}/live`, { state: { cage } });
   };
 
-  const primaryCage = cages[0];
-  const primaryPet = pets[0];
+  const preferredPet = pets[0];
+  const primaryCage =
+    cages.find(
+      (cage) => String(cage.petId) === String(preferredPet?.id || preferredPet?.petId)
+    ) || cages[0];
+  const primaryPet =
+    pets.find(
+      (pet) => String(pet.id || pet.petId) === String(primaryCage?.petId)
+    ) || preferredPet;
   const hasTemperature =
     primaryCage?.temperature !== undefined && primaryCage.temperature !== "-";
   const hasHumidity =
@@ -216,7 +224,7 @@ function OwnerHomePage() {
             <i className={primaryStreamStatus === "online" ? "is-online" : ""} />
           </div>
           <div className="care-hero-copy">
-            <span className="eyebrow">LIVE CARE OVERVIEW</span>
+            <span className="eyebrow">실시간 돌봄 현황</span>
             <h1>{primaryPet ? `${primaryPet.name}의 오늘을 살펴보세요` : "반려동물의 일상을 연결하세요"}</h1>
             <p>
               {primaryCage
@@ -230,7 +238,7 @@ function OwnerHomePage() {
           </div>
         </div>
         <div className="care-hero-status">
-          <span className="care-status-label">CURRENT STATUS</span>
+          <span className="care-status-label">현재 연결 상태</span>
           <strong>{primaryCage ? (primaryStreamStatus === "online" ? "안정적으로 연결됨" : "연결 상태 확인 필요") : "연결된 케이지 없음"}</strong>
           <div><span className={getStreamBadgeClass(primaryStreamStatus)}>{getStreamBadgeLabel(primaryStreamStatus)}</span><small>{primaryCage?.reportStatus || "등록 후 모니터링 시작"}</small></div>
         </div>
@@ -242,8 +250,8 @@ function OwnerHomePage() {
         <div className="section-header">
           <div>
             <div className="section-title-row">
-              <h2>Today&apos;s overview</h2>
-              <span className="badge gray">일부 Preview</span>
+              <h2>오늘의 돌봄 현황</h2>
+              <span className="badge gray">일부 예시</span>
             </div>
             <p>{primaryPet?.name || "반려동물"}의 환경과 케어 흐름을 한눈에 확인하세요.</p>
           </div>
@@ -252,17 +260,17 @@ function OwnerHomePage() {
         <div className="monitoring-board">
           <div className="wellness-score">
             <div className="score-ring" style={{ "--score": `${DEMO_TODAY_STATUS.healthScore * 3.6}deg` }}><span><strong>{DEMO_TODAY_STATUS.healthScore}</strong><small>/ 100</small></span></div>
-            <div><span>WELLNESS SCORE · PREVIEW</span><h3>오늘도 편안한 하루예요</h3><p>환경과 활동 정보를 종합한 데모 건강 지표입니다.</p></div>
+            <div><span>건강 상태 예시</span><h3>오늘도 편안한 하루예요</h3><p>환경과 활동 정보를 종합한 예시 건강 지표입니다.</p></div>
           </div>
           <div className="environment-metrics">
-            <div><span>Temperature {!hasTemperature && <small>Preview</small>}</span><strong>{temperature}<em>°C</em></strong><i style={{ width: `${Math.min(Number(temperature) / 35 * 100, 100)}%` }} /></div>
-            <div><span>Humidity {!hasHumidity && <small>Preview</small>}</span><strong>{humidity}<em>%</em></strong><i style={{ width: `${Math.min(Number(humidity), 100)}%` }} /></div>
-            <div><span>Environment <small>Preview</small></span><strong className="text-value">{DEMO_TODAY_STATUS.environmentStatus}</strong><p>권장 온·습도 범위</p></div>
+            <div><span>온도 {!hasTemperature && <small>예시</small>}</span><strong>{temperature}<em>°C</em></strong><i style={{ width: `${Math.min(Number(temperature) / 35 * 100, 100)}%` }} /></div>
+            <div><span>습도 {!hasHumidity && <small>예시</small>}</span><strong>{humidity}<em>%</em></strong><i style={{ width: `${Math.min(Number(humidity), 100)}%` }} /></div>
+            <div><span>생활 환경 <small>예시</small></span><strong className="text-value">{DEMO_TODAY_STATUS.environmentStatus}</strong><p>권장 온·습도 범위</p></div>
           </div>
           <div className="care-timeline">
-            <div><span>최근 급식</span><strong>{DEMO_TODAY_STATUS.lastFeedingTime}</strong><small>Preview</small></div>
-            <div><span>현재 공복 시간</span><strong>{DEMO_TODAY_STATUS.fastingDuration}</strong><small>Preview</small></div>
-            <div><span>행동 모니터링</span><strong>{DEMO_TODAY_STATUS.recentAbnormalBehavior}</strong><small>Preview</small></div>
+            <div><span>최근 급식</span><strong>{DEMO_TODAY_STATUS.lastFeedingTime}</strong><small>예시</small></div>
+            <div><span>현재 공복 시간</span><strong>{DEMO_TODAY_STATUS.fastingDuration}</strong><small>예시</small></div>
+            <div><span>행동 모니터링</span><strong>{DEMO_TODAY_STATUS.recentAbnormalBehavior}</strong><small>예시</small></div>
           </div>
         </div>
       </section>
@@ -273,15 +281,15 @@ function OwnerHomePage() {
             <div>
               <div className="section-title-row">
                 <h2>최근 이벤트</h2>
-                <span className="badge green">Live data</span>
+                <span className="badge green">실시간 기록</span>
               </div>
-              <p>최근 반려동물 이벤트 API 조회 결과입니다.</p>
+              <p>최근 감지된 반려동물의 행동을 보여드립니다.</p>
             </div>
           </div>
           <div className="owner-home-list">
             {recentEvents.map((event) => (
               <article key={event.eventId}>
-                <span className="badge blue">{event.eventType}</span>
+                <span className="badge blue">{getOwnerEventLabel(event.eventType)}</span>
                 <div>
                   <strong>{event.petName} · {event.cameraName}</strong>
                   <small>{event.occurredAt ? new Date(event.occurredAt).toLocaleString("ko-KR") : "시간 정보 없음"}</small>

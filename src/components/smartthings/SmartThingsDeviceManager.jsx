@@ -69,6 +69,15 @@ function isRegistered(device) {
   return device.registered === true || Boolean(device.mapping);
 }
 
+function managementLabel(device) {
+  return String(device.mapping?.label || device.displayName || "SmartThings 센서").trim();
+}
+
+function shortDeviceId(value) {
+  const id = String(value || "");
+  return id.length <= 16 ? id : `${id.slice(0, 8)}…${id.slice(-4)}`;
+}
+
 function readingKey(deviceId, attribute) {
   return `${deviceId}:${attribute}`;
 }
@@ -313,6 +322,17 @@ function SmartThingsDeviceManager({ loadCages }) {
     }
   }
 
+  async function copyDeviceId(device) {
+    try {
+      await navigator.clipboard.writeText(device.deviceId);
+      setError("");
+      setNotice(`${managementLabel(device)} 기기 ID를 복사했습니다.`);
+    } catch {
+      setNotice("");
+      setError("기기 ID를 복사하지 못했습니다. 브라우저 권한을 확인해주세요.");
+    }
+  }
+
   return (
     <section className="smartthings-manager">
       <div className="section-header">
@@ -346,6 +366,9 @@ function SmartThingsDeviceManager({ loadCages }) {
               label: "",
             };
             const action = actions[device.deviceId];
+            const title = managementLabel(device);
+            const nativeName = String(device.displayName || "").trim();
+            const showNativeName = registered && nativeName && nativeName !== title;
 
             return (
               <article
@@ -355,10 +378,24 @@ function SmartThingsDeviceManager({ loadCages }) {
                 <div className="device-card-top">
                   <div>
                     <span className="eyebrow">SmartThings Sensor</span>
-                    <h3>{device.displayName}</h3>
-                    <p className="smartthings-device-id" title={device.deviceId}>
-                      {device.deviceId}
-                    </p>
+                    <h3 title={title}>{title}</h3>
+                    {showNativeName && (
+                      <p className="smartthings-native-name" title={nativeName}>
+                        SmartThings 이름 · {nativeName}
+                      </p>
+                    )}
+                    <div className="smartthings-device-id-row" title={device.deviceId}>
+                      <span>기기 ID</span>
+                      <code>{shortDeviceId(device.deviceId)}</code>
+                      <button
+                        type="button"
+                        className="smartthings-copy-button"
+                        aria-label={`${title} 기기 ID 복사`}
+                        onClick={() => copyDeviceId(device)}
+                      >
+                        복사
+                      </button>
+                    </div>
                   </div>
                   <StatusChip tone={registered ? "info" : "neutral"}>
                     {registered ? "등록됨" : "미등록"}
@@ -399,6 +436,7 @@ function SmartThingsDeviceManager({ loadCages }) {
                       <div>
                         <span>연결 상태</span>
                         <StatusChip
+                          className="smartthings-connection-chip"
                           dot
                           tone={mapping?.online ? "success" : "neutral"}
                         >

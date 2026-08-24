@@ -110,11 +110,11 @@ function OwnerReportPage() {
     <div className="owner-page">
       <section className="page-head">
         <div>
-          <span className="eyebrow">Daily Health Report</span>
+          <span className="eyebrow">하루 돌봄 리포트</span>
           <h1>일일 건강 리포트</h1>
-          <p>세션 로그로 집계된 환경 정보와 AI 행동 분석을 확인합니다.</p>
+          <p>하루 동안 수집된 환경 정보와 행동 관찰 내용을 확인합니다.</p>
         </div>
-        <span className="badge green">AI 리포트 연결</span>
+        <span className="badge green">자동 분석 리포트</span>
       </section>
 
       <section className="report-query-bar">
@@ -162,7 +162,7 @@ function OwnerReportPage() {
             onClick={handleFetchReport}
             disabled={isLoading || isPetsLoading || !selectedPetId}
           >
-            {isLoading ? "AI 리포트 생성 중" : "리포트 조회"}
+            {isLoading ? "리포트 생성 중" : "리포트 조회"}
           </button>
         </div>
       </section>
@@ -181,7 +181,7 @@ function OwnerReportPage() {
             <span />
             <span />
           </div>
-          <p>수집된 로그를 분석해 일일 리포트를 만들고 있습니다.</p>
+          <p>수집된 기록을 분석해 일일 리포트를 만들고 있습니다.</p>
         </section>
       )}
 
@@ -190,7 +190,7 @@ function OwnerReportPage() {
           <section className="wellness-report">
             <header>
               <div>
-                <span className="eyebrow">DAILY WELLNESS REPORT</span>
+                <span className="eyebrow">하루 상태 요약</span>
                 <h2>{report.petName || selectedPet?.name || "반려동물"}</h2>
               </div>
               <div className="report-header-meta">
@@ -203,7 +203,7 @@ function OwnerReportPage() {
 
             {report.status === "FAILED" && (
               <div className="report-alert report-alert--danger" role="alert">
-                <strong>AI 분석을 완료하지 못했습니다.</strong>
+                <strong>자동 분석을 완료하지 못했습니다.</strong>
                 <p>수집 통계는 정상이며, 잠시 후 다시 조회하면 분석을 재시도합니다.</p>
               </div>
             )}
@@ -222,7 +222,7 @@ function OwnerReportPage() {
                   {formatMeasurement(report.averageTemperature)}
                   <small>°C</small>
                 </strong>
-                <p>측정 로그 평균</p>
+                <p>환경 측정 기록 평균</p>
               </div>
               <div>
                 <span>평균 습도</span>
@@ -230,10 +230,10 @@ function OwnerReportPage() {
                   {formatMeasurement(report.averageHumidity)}
                   <small>%</small>
                 </strong>
-                <p>측정 로그 평균</p>
+                <p>환경 측정 기록 평균</p>
               </div>
               <div>
-                <span>전체 로그</span>
+                <span>전체 기록</span>
                 <strong>
                   {report.totalLogCount}
                   <small>건</small>
@@ -241,7 +241,7 @@ function OwnerReportPage() {
                 <p>오늘 수집된 기록</p>
               </div>
               <div>
-                <span>센서 로그</span>
+                <span>환경 측정</span>
                 <strong>
                   {report.sensorLogCount}
                   <small>건</small>
@@ -251,7 +251,7 @@ function OwnerReportPage() {
             </div>
 
             <div className="report-insight">
-              <span>오늘의 AI 인사이트</span>
+              <span>오늘의 상태 요약</span>
               <p>{report.summary}</p>
             </div>
           </section>
@@ -259,10 +259,10 @@ function OwnerReportPage() {
           <section className="report-analysis-card report-environment-card">
             <div className="report-card-heading">
               <div>
-                <span className="eyebrow">Environment</span>
+                <span className="eyebrow">생활 환경</span>
                 <h2>{environment.title}</h2>
               </div>
-              <StatusChip tone="info">DB 집계</StatusChip>
+              <StatusChip tone="info">센서 기록 기준</StatusChip>
             </div>
             <p className="report-card-description">{environment.description}</p>
             <div className="report-environment-metrics">
@@ -301,7 +301,7 @@ function OwnerReportPage() {
             <div className="section-header report-section-heading">
               <div>
                 <h2>행동 분석</h2>
-                <p>실제 관찰 로그에 근거한 AI 분석입니다.</p>
+                <p>카메라와 센서의 관찰 기록을 바탕으로 정리했습니다.</p>
               </div>
               <span className="badge blue">
                 {report.behaviorCards.length}개 관찰
@@ -341,7 +341,7 @@ function OwnerReportPage() {
             <article className="report-analysis-card">
               <div className="report-card-heading">
                 <div>
-                  <span className="eyebrow">Care Guide</span>
+                  <span className="eyebrow">돌봄 안내</span>
                   <h2>오늘의 돌봄 제안</h2>
                 </div>
               </div>
@@ -361,7 +361,7 @@ function OwnerReportPage() {
             <article className="report-analysis-card">
               <div className="report-card-heading">
                 <div>
-                  <span className="eyebrow">Notice</span>
+                  <span className="eyebrow">주의 사항</span>
                   <h2>확인할 내용</h2>
                 </div>
               </div>

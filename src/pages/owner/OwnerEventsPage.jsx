@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getMyPetEvents, getPetEvent } from "../../api/events";
+import { getOwnerEventLabel } from "../../utils/ownerPresentation";
 
 function formatEventTime(value) {
   if (!value) return "시간 정보 없음";
@@ -72,11 +73,11 @@ function OwnerEventsPage() {
     <div className="owner-page">
       <section className="page-head">
         <div>
-          <span className="eyebrow">Event Replay</span>
+          <span className="eyebrow">행동 영상</span>
           <h1>이벤트 다시보기</h1>
-          <p>반려동물의 감지 이벤트와 저장된 영상을 실제 이벤트 데이터로 확인합니다.</p>
+          <p>감지된 반려동물의 행동과 저장된 영상을 확인합니다.</p>
         </div>
-        <span className="badge green">API 연결</span>
+        <span className="badge green">서비스 연결됨</span>
       </section>
 
       {errorMessage && <div className="form-error">{errorMessage}</div>}
@@ -85,13 +86,15 @@ function OwnerEventsPage() {
         <div className="section-header event-filter-header">
           <div>
             <h2>이벤트 목록</h2>
-            <p>이벤트 시간, 종류, 카메라와 AI 신뢰도를 확인할 수 있습니다.</p>
+            <p>감지 시각, 행동 종류, 카메라와 감지 신뢰도를 확인할 수 있습니다.</p>
           </div>
           <label className="event-filter">
             <span>이벤트 종류</span>
             <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
               {eventTypes.map((type) => (
-                <option key={type} value={type}>{type === "ALL" ? "전체" : type}</option>
+                <option key={type} value={type}>
+                  {type === "ALL" ? "전체" : getOwnerEventLabel(type)}
+                </option>
               ))}
             </select>
           </label>
@@ -107,14 +110,19 @@ function OwnerEventsPage() {
               <article className="event-replay-card" key={event.eventId}>
                 <div className="event-thumbnail">
                   {event.thumbnailUrl ? (
-                    <img src={event.thumbnailUrl} alt={`${event.eventType} 이벤트 썸네일`} />
+                    <img
+                      src={event.thumbnailUrl}
+                      alt={`${getOwnerEventLabel(event.eventType)} 이벤트 썸네일`}
+                    />
                   ) : (
-                    <div><strong>EVENT</strong><span>썸네일 없음</span></div>
+                    <div><strong>이벤트</strong><span>미리보기 이미지 없음</span></div>
                   )}
                 </div>
                 <div className="event-replay-body">
                   <div className="event-card-badges">
-                    <span className="badge blue">{event.eventType}</span>
+                    <span className="badge blue">
+                      {getOwnerEventLabel(event.eventType)}
+                    </span>
                     <span className="badge green">{formatConfidence(event.confidence)}</span>
                   </div>
                   <h3>{event.petName}</h3>
@@ -150,7 +158,7 @@ function OwnerEventsPage() {
           <div className="owner-detail-grid">
             <div><span>반려동물</span><strong>{selectedEvent.petName}</strong><p>{selectedEvent.petId}</p></div>
             <div><span>카메라</span><strong>{selectedEvent.cameraName}</strong><p>{selectedEvent.cameraId}</p></div>
-            <div><span>이벤트</span><strong>{selectedEvent.eventType}</strong><p>{formatConfidence(selectedEvent.confidence)}</p></div>
+            <div><span>이벤트</span><strong>{getOwnerEventLabel(selectedEvent.eventType)}</strong><p>{formatConfidence(selectedEvent.confidence)}</p></div>
             <div><span>감지 시각</span><strong>{formatEventTime(selectedEvent.occurredAt)}</strong><p>{selectedEvent.eventDurationSeconds ?? "-"}초</p></div>
           </div>
         </section>
